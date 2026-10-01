@@ -191,7 +191,7 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
         </div>
       </div>
 
-      <main className="practice-main">
+      <main className={`practice-main ${cur.stimulus.length > 0 ? 'wide' : ''}`}>
         <QuestionView
           key={`${round}-${idx}`}
           q={cur}

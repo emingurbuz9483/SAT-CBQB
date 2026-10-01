@@ -611,6 +611,36 @@ sup {
 .stem {
   margin: 1.2em 0 0;
 }
+.pane-question > .stem:first-child {
+  margin-top: 0;
+}
+
+/* passage and question side by side on wide screens; stacked below 1024px */
+@media (min-width: 1024px) {
+  .practice-main.wide {
+    max-width: 1152px;
+    padding-bottom: 120px;
+  }
+  .question.split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .question.split .pane-passage {
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 73px - 32px);
+    overflow-y: auto;
+    padding-right: 32px;
+    border-right: 1px solid var(--line);
+  }
+  .question.split .pane-passage .stimulus > :last-child {
+    margin-bottom: 0;
+  }
+  .question.split .pane-question {
+    padding-left: 32px;
+  }
+}
 .choose {
   margin: 1.4em 0 12px;
   font-weight: 700;
