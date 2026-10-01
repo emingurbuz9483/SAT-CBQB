@@ -52,6 +52,15 @@ let account: Account | null = null
 let syncing = false
 let syncedFor: string | null = null
 
+// A failed sign-in comes back as ?error=…&error_description=… (PKCE). Show it, then tidy the URL.
+let authError: string | null = (() => {
+  const q = new URLSearchParams(location.search)
+  const msg = q.get('error_description') || q.get('error')
+  if (!msg) return null
+  history.replaceState(null, '', location.pathname + location.hash)
+  return msg.replace(/\+/g, ' ')
+})()
+
 function writeLocal() {
   try {
     localStorage.setItem(KEY, JSON.stringify(state))
@@ -154,6 +163,16 @@ function setAccount(user: { id: string; email?: string; user_metadata?: Record<s
   if (syncedFor !== user.id) void pullCloud(user.id)
 }
 
+if (supabase && new URLSearchParams(location.search).has('code')) {
+  // supabase-js exchanges ?code= automatically; report it if that exchange fails
+  void supabase.auth.getSession().then(({ error }) => {
+    if (error) {
+      authError = error.message
+      emit()
+    }
+  })
+}
+
 supabase?.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_OUT') {
     setAccount(null)
@@ -163,8 +182,14 @@ supabase?.auth.onAuthStateChange((event, session) => {
   setTimeout(() => setAccount(session?.user ?? null), 0)
 })
 
+export function clearAuthError() {
+  authError = null
+  emit()
+}
+
 export async function signInWithGoogle() {
   if (!supabase) return
+  authError = null
   await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: `${location.origin}${location.pathname}` },
@@ -257,8 +282,9 @@ export function useStorageMode(): StorageMode {
 
 export const accountsEnabled = !!supabase
 
-export function useAccount(): { account: Account | null; syncing: boolean } {
+export function useAccount(): { account: Account | null; syncing: boolean; error: string | null } {
   const a = useSyncExternalStore(subscribe, () => account)
   const s = useSyncExternalStore(subscribe, () => syncing)
-  return { account: a, syncing: s }
+  const e = useSyncExternalStore(subscribe, () => authError)
+  return { account: a, syncing: s, error: e }
 }

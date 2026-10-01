@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { accountsEnabled, signInWithGoogle, signOut, useAccount } from '../progress'
+import { accountsEnabled, clearAuthError, signInWithGoogle, signOut, useAccount } from '../progress'
 
 const GoogleG = () => (
   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -12,7 +12,7 @@ const GoogleG = () => (
 
 /** Top-bar sign-in button / account menu. Hidden when Supabase isn't configured. */
 export function AccountButton() {
-  const { account, syncing } = useAccount()
+  const { account, syncing, error } = useAccount()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -28,10 +28,20 @@ export function AccountButton() {
   if (!accountsEnabled) return null
   if (!account)
     return (
-      <button className="signin-btn" onClick={() => void signInWithGoogle()}>
-        <GoogleG />
-        <span>Sign in</span>
-      </button>
+      <>
+        <button className="signin-btn" onClick={() => void signInWithGoogle()}>
+          <GoogleG />
+          <span>Sign in</span>
+        </button>
+        {error && (
+          <div className="auth-error" role="alert">
+            <strong>Sign-in didn’t work.</strong> {error}
+            <button className="link" onClick={clearAuthError}>
+              Dismiss
+            </button>
+          </div>
+        )}
+      </>
     )
 
   return (

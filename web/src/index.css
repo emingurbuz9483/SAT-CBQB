@@ -192,6 +192,24 @@ h3 {
 .account {
   position: relative;
 }
+.auth-error {
+  position: fixed;
+  top: 72px;
+  right: 16px;
+  z-index: 40;
+  width: min(380px, calc(100vw - 32px));
+  padding: 14px 16px;
+  background: #fff;
+  color: var(--text);
+  border-left: 4px solid var(--red);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(33, 36, 44, 0.2);
+  font-size: 14px;
+}
+.auth-error .link {
+  display: block;
+  margin-top: 8px;
+}
 .account-btn {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
