@@ -1,0 +1,20 @@
+# dependencies / build output
+node_modules/
+dist/
+
+# generated from ../data by web/scripts/prepare-data.mjs
+web/public/data/
+
+# personal practice progress written by the dev server
+progress/
+
+# pipeline intermediates and the source PDF
+pipeline/cache/
+pipeline/*.pkl
+pipeline/*.pdf
+__pycache__/
+
+# tooling / OS
+.ruff_cache/
+.DS_Store
+*.log
