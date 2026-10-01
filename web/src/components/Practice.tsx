@@ -94,36 +94,20 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
       difficulty: q.difficulty,
       choice: selected,
       correct: selected === q.answer,
-      attempt: tried.length + 1,
+      attempt: 1,
       seconds: timer.sec,
     })
-    if (selected === q.answer) {
-      if (results[idx] === null) {
-        recordResult(q.id, tried.length === 0)
-        setResult(tried.length === 0 ? 'correct' : 'incorrect')
-      }
-      setPhase('done')
-      setToast('correct')
-    } else {
-      if (results[idx] === null) {
-        recordResult(q.id, false)
-        setResult('incorrect')
-      }
-      setTried((t) => [...t, selected])
-      setPhase('wrong')
-      setToast('wrong')
+    // One chance per question: a wrong pick ends the question and counts as a mistake.
+    const correct = selected === q.answer
+    if (results[idx] === null) {
+      recordResult(q.id, correct)
+      setResult(correct ? 'correct' : 'incorrect')
     }
-  }, [q, selected, phase, results, idx, tried, setResult, timer.sec])
-
-  const tryAgain = useCallback(() => {
-    setSelected(null)
-    setPhase('answering')
-    setToast(null)
-  }, [])
-  const reveal = () => {
+    if (!correct) setTried([selected])
     setPhase('done')
-    setToast(null)
-  }
+    setToast(correct ? 'correct' : 'wrong')
+  }, [q, selected, phase, results, idx, setResult, timer.sec])
+
   const next = useCallback(() => {
     if (!qs) return
     if (idx + 1 >= qs.length) setFinished(true)
@@ -145,18 +129,17 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
       const k = e.key.toUpperCase()
       let i = LETTERS.indexOf(k as Letter)
       if (i < 0) i = ['1', '2', '3', '4'].indexOf(k)
-      if (i >= 0 && phase === 'answering' && !tried.includes(LETTERS[i])) {
+      if (i >= 0 && phase === 'answering') {
         setSelected(LETTERS[i])
         setCrossed((c) => c.filter((x) => x !== LETTERS[i]))
       } else if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)) {
         if (phase === 'answering') check()
-        else if (phase === 'done') next()
-        else tryAgain()
+        else next()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [q, phase, tried, finished, check, next, tryAgain])
+  }, [q, phase, finished, check, next])
 
   const title = (config.skills.length === 1 ? skillBySlug(config.skills[0]) : null) ?? 'Mixed practice'
 
@@ -231,19 +214,8 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
         <div className={`toast ${toast}`} role="status" aria-live="polite">
           <span className="toast-icon">{toast === 'correct' ? <CheckIcon size={30} /> : <CrossIcon size={26} />}</span>
           <div className="toast-body">
-            <strong>{toast === 'correct' ? (tried.length ? 'You got it!' : 'Good work!') : 'Not quite yet…'}</strong>
-            <p>
-              {toast === 'correct'
-                ? tried.length
-                  ? 'Read why the other choices don’t work.'
-                  : 'You got it. Onward!'
-                : 'Try again, or see why each choice is right or wrong.'}
-            </p>
-            {toast === 'wrong' && (
-              <button className="link" onClick={reveal}>
-                Show the answer and explanations
-              </button>
-            )}
+            <strong>{toast === 'correct' ? 'Good work!' : 'Not quite.'}</strong>
+            <p>{toast === 'correct' ? 'You got it. Onward!' : `The correct answer is ${cur.answer}. Read why your choice doesn’t work.`}</p>
           </div>
           <button className="icon-btn toast-close" aria-label="Dismiss" onClick={() => setToast(null)}>
             <CloseIcon size={18} />
@@ -278,16 +250,6 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
                 </button>
                 <button className="btn primary" disabled={!selected} onClick={check}>
                   Check
-                </button>
-              </>
-            )}
-            {phase === 'wrong' && (
-              <>
-                <button className="btn text" onClick={reveal}>
-                  Show answer
-                </button>
-                <button className="btn primary" onClick={tryAgain}>
-                  Try again
                 </button>
               </>
             )}

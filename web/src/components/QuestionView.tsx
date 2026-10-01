@@ -2,14 +2,14 @@ import type { Letter, Question } from '../types'
 import { Stimulus, Html } from './Stimulus'
 import { CheckIcon, CrossIcon } from './Icons'
 
-/** answering: choosing; wrong: just checked a wrong choice; done: answered correctly or explanation revealed */
-export type Phase = 'answering' | 'wrong' | 'done'
+/** answering: choosing; done: checked (one chance per question) */
+export type Phase = 'answering' | 'done'
 
 interface Props {
   q: Question
   phase: Phase
   selected: Letter | null
-  tried: Letter[] // wrong choices already tried
+  tried: Letter[] // the wrong choice the student picked, if any
   crossed: Letter[]
   onSelect: (l: Letter) => void
   onToggleCross: (l: Letter) => void
@@ -30,9 +30,9 @@ export function QuestionView({ q, phase, selected, tried, crossed, onSelect, onT
           const isCrossed = crossed.includes(letter) && phase === 'answering'
           let state = ''
           if (phase === 'done') state = isCorrect ? 'correct' : isTried ? 'incorrect' : 'faded'
-          else if (phase === 'wrong') state = isSelected ? 'incorrect' : isTried ? 'tried' : ''
-          else state = isTried ? 'tried' : isSelected ? 'selected' : ''
-          const showWhy = phase === 'done' || (phase === 'wrong' && isSelected)
+          else state = isSelected ? 'selected' : ''
+          // right answer: explain every choice; wrong answer: explain the pick (red) and the correct one (green)
+          const showWhy = phase === 'done' && (tried.length === 0 || isCorrect || isTried)
           const why = q.rationale.byChoice[letter]
           return (
             <li key={letter} className={`choice ${state} ${isCrossed ? 'crossed' : ''}`}>
@@ -46,7 +46,7 @@ export function QuestionView({ q, phase, selected, tried, crossed, onSelect, onT
               >
                 <span className="bubble" aria-hidden="true">
                   {state === 'correct' && <CheckIcon size={14} />}
-                  {(state === 'incorrect' || state === 'tried') && <CrossIcon size={13} />}
+                  {state === 'incorrect' && <CrossIcon size={13} />}
                   {letter}
                 </span>
                 <span className="choice-body">
