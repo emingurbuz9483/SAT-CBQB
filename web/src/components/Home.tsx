@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CatalogEntry, Difficulty } from '../types'
 import { DIFFICULTIES, DOMAINS, loadCatalog, skillSlug } from '../data'
-import { resetProgress, useStorageMode, type Progress } from '../progress'
+import { accountsEnabled, resetProgress, useAccount, useStorageMode, type Progress } from '../progress'
 import { navigate } from '../router'
 import { configToParams, inPool, type Mode } from '../session'
 
@@ -33,6 +33,7 @@ export function Home({ progress }: { progress: Progress }) {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [confirmReset, setConfirmReset] = useState(false)
   const storage = useStorageMode()
+  const { account } = useAccount()
 
   useEffect(() => {
     loadCatalog().then(setCatalog, (e: Error) => setError(e.message))
@@ -183,13 +184,15 @@ export function Home({ progress }: { progress: Progress }) {
         <footer className="home-foot">
           <p>
             Questions © College Board, from the SAT Suite Question Bank.{' '}
-            {storage === 'folder' ? (
-              <>
-                Your progress is saved to the <code>progress</code> folder on this computer.
-              </>
-            ) : storage === 'browser' ? (
-              'Your progress is saved in this browser only.'
-            ) : null}
+            {account
+              ? `Your progress is saved to your account (${account.email}) and syncs across devices.`
+              : storage === 'folder'
+                ? 'Your progress is saved to the progress folder on this computer.'
+                : storage === 'browser'
+                  ? accountsEnabled
+                    ? 'Your progress is saved in this browser only. Sign in with Google to keep it on every device.'
+                    : 'Your progress is saved in this browser only.'
+                  : null}
           </p>
           {answered > 0 &&
             (confirmReset ? (
