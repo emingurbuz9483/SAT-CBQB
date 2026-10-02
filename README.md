@@ -2,7 +2,7 @@
 
 The College Board SAT Suite Question Bank (CBQB) only exports questions as PDFs, which makes them hard to practice with and slow to check. This project turns the PDF into structured data and serves it in a Khan Academy–style practice site: pick an answer, press **Check**, and see right away why each choice is right or wrong.
 
-**1,845 SAT Reading and Writing questions**, sorted by domain, skill and difficulty.
+**753 SAT Reading and Writing questions** (Bluebook practice test questions excluded), sorted by domain, skill and difficulty.
 
 ## Features
 

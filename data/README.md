@@ -1,10 +1,10 @@
 # CBQB question data
 
-Extracted from `questionbank-export-2026-10-1.pdf` (1,977 pages): **1,845 Reading and Writing questions**.
+Extracted from `questionbank-export-2026-10-1.pdf` (1,977 pages), then limited to the **753 Reading and Writing questions** in `questionbank-export-2026-10-2.pdf` (805 pages), which leaves out every question that appears in a Bluebook practice test.
 
 - `questions.json`: all questions, sorted by domain → skill → difficulty (Easy, Medium, Hard), in College Board's official order.
 - `index.json`: `{domain: {skill: {difficulty: [question ids]}}}` for menus and filters.
-- `figures/<id>.png`: the 62 charts, rendered at 3× from the PDF's vector drawings.
+- `figures/<id>.png`: the 26 charts, rendered at 3× from the PDF's vector drawings.
 
 ## Question object
 

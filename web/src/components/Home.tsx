@@ -59,8 +59,13 @@ export function Home({ progress }: { progress: Progress }) {
     return m
   }, [catalog, progress, prefs])
 
-  const answered = Object.keys(progress).length
-  const correct = Object.values(progress).filter((r) => r.r === 'c').length
+  // count only questions still in the bank (progress may hold ids that were removed)
+  let answered = 0
+  let correct = 0
+  for (const s of stats.values()) {
+    answered += s.done
+    correct += s.correct
+  }
 
   const start = (skills: string[]) =>
     navigate('/practice', configToParams({ skills: skills.map(skillSlug), difficulties: prefs.difficulties, mode: prefs.mode, size: prefs.size }))
@@ -79,7 +84,7 @@ export function Home({ progress }: { progress: Progress }) {
           <p className="eyebrow">SAT Reading and Writing</p>
           <h1>Practice with the official College Board question bank</h1>
           <p className="hero-sub">
-            {catalog ? catalog.length.toLocaleString('en-US') : '1,845'} real questions, sorted by skill and difficulty. Pick an answer, press Check, and see why every
+            {catalog ? catalog.length.toLocaleString('en-US') : '753'} real questions, sorted by skill and difficulty. Pick an answer, press Check, and see why every
             choice is right or wrong.
           </p>
           {answered > 0 && (
