@@ -4,6 +4,7 @@ import { DIFFICULTIES, DOMAINS, loadCatalog, skillSlug } from '../data'
 import { accountsEnabled, resetProgress, useAccount, useStorageMode, type Progress } from '../progress'
 import { navigate } from '../router'
 import { configToParams, inPool, type Mode } from '../session'
+import { MOCK_MINUTES, MOCK_SIZE, MODULE_DIFFICULTIES, loadMock, timeLabel, type ModuleNo } from '../mock'
 
 const PREFS = 'cbqb-prefs-v1'
 interface Prefs {
@@ -32,6 +33,7 @@ export function Home({ progress }: { progress: Progress }) {
   const [error, setError] = useState<string | null>(null)
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [mockOpenedAt, setMockOpenedAt] = useState<number | null>(null) // when the module picker was opened
   const storage = useStorageMode()
   const { account } = useAccount()
 
@@ -138,6 +140,48 @@ export function Home({ progress }: { progress: Progress }) {
         </div>
 
         {error && <p className="error">Couldn’t load the question catalog ({error}).</p>}
+
+        <section className="mock-card">
+          <div className="mock-card-head">
+            <div>
+              <h2>Mockup Test</h2>
+              <p className="muted">
+                {MOCK_SIZE} questions in {MOCK_MINUTES} minutes, laid out like a real Reading and Writing module, using only questions you haven’t answered yet.
+              </p>
+            </div>
+            <button className="btn primary" aria-expanded={mockOpenedAt !== null} onClick={() => setMockOpenedAt((o) => (o === null ? Date.now() : null))}>
+              Mockup Test
+            </button>
+          </div>
+          {mockOpenedAt !== null && (
+            <div className="mock-options">
+              {([1, 2] as ModuleNo[]).map((m) => {
+                const [lo, hi] = MODULE_DIFFICULTIES[m]
+                const fresh = catalog?.filter((e) => (e.difficulty === lo || e.difficulty === hi) && !progress[e.id]).length
+                const saved = loadMock()
+                const inProgress = saved && saved.module === m && !saved.submittedAt && saved.deadline > mockOpenedAt ? saved : null
+                return (
+                  <button key={m} className="mock-option" disabled={!catalog} onClick={() => navigate('/mock', { m: String(m), fresh: '1' })}>
+                    <strong>Module {m}</strong>
+                    <span className="mock-option-diff">
+                      <span className={`dot-diff diff-${lo.toLowerCase()}`} />
+                      {lo} and <span className={`dot-diff diff-${hi.toLowerCase()}`} />
+                      {hi}
+                    </span>
+                    <span className="muted">
+                      {inProgress
+                        ? `In progress · ${timeLabel(inProgress.deadline - mockOpenedAt)} left`
+                        : fresh !== undefined
+                          ? `${fresh} new ${lo.toLowerCase()} and ${hi.toLowerCase()} questions left`
+                          : '\u00a0'}
+                    </span>
+                    <span className="mock-option-go">{inProgress ? 'Resume' : 'Start'} →</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </section>
 
         {DOMAINS.map((d) => {
           const domainPool = d.skills.reduce((a, s) => a + (stats.get(s)?.pool ?? 0), 0)

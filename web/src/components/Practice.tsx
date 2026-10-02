@@ -1,21 +1,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Difficulty, Letter, Question } from '../types'
 import { DIFFICULTIES, loadSkill, skillBySlug } from '../data'
-import { configToParams, inPool, type Result, type SessionConfig } from '../session'
+import { configToParams, inPool, shuffle, type Result, type SessionConfig } from '../session'
 import { logCheck, recordResult, type Progress } from '../progress'
 import { navigate } from '../router'
 import { QuestionView, type Phase } from './QuestionView'
 import { CheckIcon, CloseIcon, CrossIcon } from './Icons'
 import { Summary } from './Summary'
-
-function shuffle<T>(a: T[]): T[] {
-  const b = [...a]
-  for (let i = b.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[b[i], b[j]] = [b[j], b[i]]
-  }
-  return b
-}
 
 const LETTERS: Letter[] = ['A', 'B', 'C', 'D']
 

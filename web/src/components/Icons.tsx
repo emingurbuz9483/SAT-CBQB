@@ -18,6 +18,18 @@ export const CloseIcon = ({ size = 20 }: { size?: number }) => (
   </svg>
 )
 
+export const FlagIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...base} strokeWidth={2}>
+    <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+  </svg>
+)
+
+export const ChevronIcon = ({ size = 16, up = false }: { size?: number; up?: boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...base} strokeWidth={2}>
+    <path d={up ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} />
+  </svg>
+)
+
 export const Logo = () => (
   <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
     <rect x="2" y="2" width="28" height="28" rx="8" fill="#14bf96" />
