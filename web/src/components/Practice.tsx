@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import type { Difficulty, Letter, Question } from '../types'
-import { DIFFICULTIES, loadSkill, skillBySlug } from '../data'
+import type { Difficulty, Letter, Question, Subject } from '../types'
+import { DIFFICULTIES, loadSkill, skillBySlug, subjectPath } from '../data'
+import { correctLabel, isCorrect, isSpr } from '../answer'
+import { MathTools } from './MathTools'
 import { configToParams, inPool, shuffle, type Result, type SessionConfig } from '../session'
 import { logCheck, recordResult, type Progress } from '../progress'
 import { navigate } from '../router'
@@ -21,13 +23,14 @@ function useTimer(key: string, running: boolean) {
   return { sec, label: `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}` }
 }
 
-export function Practice({ config, progress }: { config: SessionConfig; progress: Progress }) {
+export function Practice({ subject, config, progress }: { subject: Subject; config: SessionConfig; progress: Progress }) {
+  const home = subjectPath(subject, '/')
   const [qs, setQs] = useState<Question[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [idx, setIdx] = useState(0)
   const [results, setResults] = useState<Result[]>([])
-  const [selected, setSelected] = useState<Letter | null>(null)
-  const [tried, setTried] = useState<Letter[]>([])
+  const [selected, setSelected] = useState<string | null>(null)
+  const [tried, setTried] = useState<string[]>([])
   const [crossed, setCrossed] = useState<Letter[]>([])
   const [phase, setPhase] = useState<Phase>('answering')
   const [toast, setToast] = useState<'correct' | 'wrong' | null>(null)
@@ -47,7 +50,7 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
   useEffect(() => {
     let alive = true
     setQs(null)
-    Promise.all(config.skills.map(loadSkill))
+    Promise.all(config.skills.map((s) => loadSkill(subject, s)))
       .then((lists) => {
         if (!alive) return
         const all = lists.flat()
@@ -84,17 +87,17 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
       skill: q.skill,
       difficulty: q.difficulty,
       choice: selected,
-      correct: selected === q.answer,
+      correct: isCorrect(q, selected),
       attempt: 1,
       seconds: timer.sec,
     })
     // One chance per question: a wrong pick ends the question and counts as a mistake.
-    const correct = selected === q.answer
+    const correct = isCorrect(q, selected)
     if (results[idx] === null) {
       recordResult(q.id, correct)
       setResult(correct ? 'correct' : 'incorrect')
     }
-    if (!correct) setTried([selected])
+    if (!correct && !isSpr(q)) setTried([selected])
     setPhase('done')
     setToast(correct ? 'correct' : 'wrong')
   }, [q, selected, phase, results, idx, setResult, timer.sec])
@@ -117,9 +120,10 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || finished || !q) return
+      if (e.target instanceof HTMLInputElement) return // typing a grid-in answer
       const k = e.key.toUpperCase()
-      let i = LETTERS.indexOf(k as Letter)
-      if (i < 0) i = ['1', '2', '3', '4'].indexOf(k)
+      let i = isSpr(q) ? -1 : LETTERS.indexOf(k as Letter)
+      if (i < 0 && !isSpr(q)) i = ['1', '2', '3', '4'].indexOf(k)
       if (i >= 0 && phase === 'answering') {
         setSelected(LETTERS[i])
         setCrossed((c) => c.filter((x) => x !== LETTERS[i]))
@@ -132,7 +136,7 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
     return () => window.removeEventListener('keydown', onKey)
   }, [q, phase, finished, check, next])
 
-  const title = (config.skills.length === 1 ? skillBySlug(config.skills[0]) : null) ?? 'Mixed practice'
+  const title = (config.skills.length === 1 ? skillBySlug(subject, config.skills[0]) : null) ?? 'Mixed practice'
 
   if (error) return <Centered>Couldn’t load questions ({error}).</Centered>
   if (!qs) return <Centered>Loading questions…</Centered>
@@ -141,7 +145,7 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
       <Centered>
         <h2>Nothing left here</h2>
         <p>{config.mode === 'new' ? 'You’ve answered every question that matches these filters.' : 'No mistakes to review for these filters. Nice!'}</p>
-        <button className="btn primary" onClick={() => navigate('/')}>
+        <button className="btn primary" onClick={() => navigate(home)}>
           Back to skills
         </button>
       </Centered>
@@ -152,8 +156,9 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
         questions={qs}
         results={results}
         title={title}
+        onBack={() => navigate(home)}
         onAgain={() => setRound((r) => r + 1)}
-        onMistakes={() => navigate('/practice', configToParams({ ...config, ids: undefined, mode: 'mistakes' }))}
+        onMistakes={() => navigate(subjectPath(subject, '/practice'), configToParams({ ...config, ids: undefined, mode: 'mistakes' }))}
       />
     )
 
@@ -175,14 +180,15 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
             <span className="muted qid" title="College Board question ID">
               ID {cur.id}
             </span>
-            <button className="icon-btn" aria-label="Exit practice" onClick={() => navigate('/')}>
+            {subject === 'math' && <MathTools />}
+            <button className="icon-btn" aria-label="Exit practice" onClick={() => navigate(home)}>
               <CloseIcon />
             </button>
           </div>
         </div>
       </div>
 
-      <main className={`practice-main ${cur.stimulus.length > 0 ? 'wide' : ''}`}>
+      <main className={`practice-main ${cur.stimulus.length > 0 && cur.test !== 'Math' ? 'wide' : ''}`}>
         <QuestionView
           key={`${round}-${idx}`}
           q={cur}
@@ -191,9 +197,10 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
           tried={tried}
           crossed={crossed}
           onSelect={(l) => {
-            setSelected(l)
+            setSelected(l || null)
             setCrossed((c) => c.filter((x) => x !== l))
           }}
+          onSubmit={check}
           onToggleCross={(l) => {
             setCrossed((c) => (c.includes(l) ? c.filter((x) => x !== l) : [...c, l]))
             if (selected === l) setSelected(null)
@@ -206,7 +213,13 @@ export function Practice({ config, progress }: { config: SessionConfig; progress
           <span className="toast-icon">{toast === 'correct' ? <CheckIcon size={30} /> : <CrossIcon size={26} />}</span>
           <div className="toast-body">
             <strong>{toast === 'correct' ? 'Good work!' : 'Not quite.'}</strong>
-            <p>{toast === 'correct' ? 'You got it. Onward!' : `The correct answer is ${cur.answer}. Read why your choice doesn’t work.`}</p>
+            <p>
+              {toast === 'correct'
+                ? 'You got it. Onward!'
+                : isSpr(cur)
+                  ? `The correct answer is ${correctLabel(cur)}. Read the explanation below.`
+                  : `The correct answer is ${cur.answer}. Read why your choice doesn’t work.`}
+            </p>
           </div>
           <button className="icon-btn toast-close" aria-label="Dismiss" onClick={() => setToast(null)}>
             <CloseIcon size={18} />

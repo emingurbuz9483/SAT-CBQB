@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CatalogEntry, Difficulty } from '../types'
-import { DIFFICULTIES, DOMAINS, loadCatalog, skillSlug } from '../data'
+import type { CatalogEntry, Difficulty, Subject } from '../types'
+import { DIFFICULTIES, SUBJECTS, loadCatalog, skillSlug, subjectPath } from '../data'
 import { accountsEnabled, resetProgress, useAccount, useStorageMode, type Progress } from '../progress'
 import { navigate } from '../router'
 import { configToParams, inPool, type Mode } from '../session'
-import { MOCK_MINUTES, MOCK_SIZE, MODULE_DIFFICULTIES, loadMock, timeLabel, type ModuleNo } from '../mock'
+import { MOCK, MODULE_DIFFICULTIES, loadMock, timeLabel, type ModuleNo } from '../mock'
 
 const PREFS = 'cbqb-prefs-v1'
 interface Prefs {
@@ -28,7 +28,20 @@ const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: 'all', label: 'All', hint: 'Everything' },
 ]
 
-export function Home({ progress }: { progress: Progress }) {
+const HERO: Record<Subject, { title: string; sub: string }> = {
+  rw: {
+    title: 'Practice with the official College Board question bank',
+    sub: 'real questions, sorted by skill and difficulty. Pick an answer, press Check, and see why every choice is right or wrong.',
+  },
+  math: {
+    title: 'Practice SAT Math with the official question bank',
+    sub: 'real questions, multiple choice and student-produced response, sorted by skill and difficulty. Check your answer and read the full explanation.',
+  },
+}
+
+export function Home({ subject, progress }: { subject: Subject; progress: Progress }) {
+  const { domains: DOMAINS, name, total } = SUBJECTS[subject]
+  const { size: MOCK_SIZE, minutes: MOCK_MINUTES } = MOCK[subject]
   const [catalog, setCatalog] = useState<CatalogEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
@@ -38,8 +51,8 @@ export function Home({ progress }: { progress: Progress }) {
   const { account } = useAccount()
 
   useEffect(() => {
-    loadCatalog().then(setCatalog, (e: Error) => setError(e.message))
-  }, [])
+    loadCatalog(subject).then(setCatalog, (e: Error) => setError(e.message))
+  }, [subject])
   useEffect(() => {
     try {
       localStorage.setItem(PREFS, JSON.stringify(prefs))
@@ -70,7 +83,7 @@ export function Home({ progress }: { progress: Progress }) {
   }
 
   const start = (skills: string[]) =>
-    navigate('/practice', configToParams({ skills: skills.map(skillSlug), difficulties: prefs.difficulties, mode: prefs.mode, size: prefs.size }))
+    navigate(subjectPath(subject, '/practice'), configToParams({ skills: skills.map(skillSlug), difficulties: prefs.difficulties, mode: prefs.mode, size: prefs.size }))
 
   const toggleDiff = (d: Difficulty) =>
     setPrefs((p) => {
@@ -83,11 +96,10 @@ export function Home({ progress }: { progress: Progress }) {
     <div className="home">
       <section className="hero">
         <div className="hero-inner">
-          <p className="eyebrow">SAT Reading and Writing</p>
-          <h1>Practice with the official College Board question bank</h1>
+          <p className="eyebrow">SAT {name}</p>
+          <h1>{HERO[subject].title}</h1>
           <p className="hero-sub">
-            {catalog ? catalog.length.toLocaleString('en-US') : '753'} real questions, sorted by skill and difficulty. Pick an answer, press Check, and see why every
-            choice is right or wrong.
+            {(catalog?.length ?? total).toLocaleString('en-US')} {HERO[subject].sub}
           </p>
           {answered > 0 && (
             <div className="hero-stats">
@@ -101,10 +113,10 @@ export function Home({ progress }: { progress: Progress }) {
               </div>
               <a
                 className="hero-link"
-                href="#/analytics"
+                href={`#${subjectPath(subject, '/analytics')}`}
                 onClick={(e) => {
                   e.preventDefault()
-                  navigate('/analytics')
+                  navigate(subjectPath(subject, '/analytics'))
                 }}
               >
                 See your topic breakdown →
@@ -156,7 +168,7 @@ export function Home({ progress }: { progress: Progress }) {
             <div>
               <h2>Mockup Test</h2>
               <p className="muted">
-                {MOCK_SIZE} questions in {MOCK_MINUTES} minutes, laid out like a real Reading and Writing module, using only questions you haven’t answered yet.
+                {MOCK_SIZE} questions in {MOCK_MINUTES} minutes, laid out like a real {name} module, using only questions you haven’t answered yet.
               </p>
             </div>
             <button className="btn primary" aria-expanded={mockOpenedAt !== null} onClick={() => setMockOpenedAt((o) => (o === null ? Date.now() : null))}>
@@ -168,10 +180,10 @@ export function Home({ progress }: { progress: Progress }) {
               {([1, 2] as ModuleNo[]).map((m) => {
                 const [lo, hi] = MODULE_DIFFICULTIES[m]
                 const fresh = catalog?.filter((e) => (e.difficulty === lo || e.difficulty === hi) && !progress[e.id]).length
-                const saved = loadMock()
+                const saved = loadMock(subject)
                 const inProgress = saved && saved.module === m && !saved.submittedAt && saved.deadline > mockOpenedAt ? saved : null
                 return (
-                  <button key={m} className="mock-option" disabled={!catalog} onClick={() => navigate('/mock', { m: String(m), fresh: '1' })}>
+                  <button key={m} className="mock-option" disabled={!catalog} onClick={() => navigate(subjectPath(subject, '/mock'), { m: String(m), fresh: '1' })}>
                     <strong>Module {m}</strong>
                     <span className="mock-option-diff">
                       <span className={`dot-diff diff-${lo.toLowerCase()}`} />

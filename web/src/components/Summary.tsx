@@ -1,19 +1,20 @@
 import type { Question } from '../types'
 import type { Result } from '../session'
-import { navigate } from '../router'
 import { CheckIcon, CrossIcon } from './Icons'
 
 interface Props {
   questions: Question[]
   results: Result[]
   title: string
+  onBack: () => void
   onAgain: () => void
   onMistakes: () => void
 }
 
-const preview = (q: Question) => q.stem.replace(/<[^>]+>/g, '')
+// math in a stem is an image: show a placeholder in the one-line preview
+const preview = (q: Question) => q.stem.replace(/<span class="m"[^>]*><\/span>/g, '▢').replace(/<[^>]+>/g, '')
 
-export function Summary({ questions, results, title, onAgain, onMistakes }: Props) {
+export function Summary({ questions, results, title, onBack, onAgain, onMistakes }: Props) {
   const correct = results.filter((r) => r === 'correct').length
   const wrong = results.filter((r) => r === 'incorrect').length
   const pct = Math.round((correct / questions.length) * 100)
@@ -39,7 +40,7 @@ export function Summary({ questions, results, title, onAgain, onMistakes }: Prop
           ))}
         </ol>
         <div className="summary-actions">
-          <button className="btn secondary" onClick={() => navigate('/')}>
+          <button className="btn secondary" onClick={onBack}>
             Back to skills
           </button>
           {wrong > 0 && (

@@ -1409,10 +1409,6 @@ sup {
 }
 
 /* ---------- analytics ---------- */
-.topbar-left {
-  display: flex;
-  align-items: center;
-}
 .nav-link {
   display: inline-flex;
   align-items: center;
@@ -1750,5 +1746,204 @@ sup {
   }
   .an-bar-label {
     font-size: 10px;
+  }
+}
+
+/* ---------- subjects ---------- */
+.subnav {
+  background: var(--navy);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.subnav-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.subject-tabs {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.subject-tab {
+  padding: 7px 16px;
+  border-radius: 19px;
+  color: #d4dcf0;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.subject-tab:hover {
+  color: #fff;
+}
+.subject-tab.on {
+  background: #fff;
+  color: var(--navy);
+}
+.view-tabs {
+  display: flex;
+  gap: 4px;
+}
+.subnav + .home .hero,
+.subnav + .analytics .hero {
+  border-top: 0;
+}
+
+/* ---------- math content ---------- */
+/* inline math: one sprite per question, sized in em so it follows the text size */
+.m {
+  display: inline-block;
+  background-repeat: no-repeat;
+}
+img.fig {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px auto;
+}
+.mblock,
+.stim-center {
+  display: block;
+  text-align: center;
+  margin: 8px 0;
+}
+.mtable {
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+.mtable td {
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+  text-align: center;
+}
+.choice-text .mtable {
+  font-size: 0.95em;
+}
+
+/* grid-in (student-produced response) */
+.gridin {
+  margin-top: 20px;
+}
+.gridin-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.gridin-input {
+  width: 180px;
+  height: 52px;
+  padding: 0 14px;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text);
+  background: #fff;
+}
+.gridin-input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-soft);
+}
+.gridin.correct .gridin-input {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+.gridin.incorrect .gridin-input {
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+.gridin-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fff;
+}
+.gridin.correct .gridin-mark {
+  background: var(--green);
+}
+.gridin.incorrect .gridin-mark {
+  background: var(--red);
+}
+.gridin-hint {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text-3);
+}
+.gridin-answer {
+  margin: 12px 0 0;
+  font-size: 16px;
+}
+.explanation {
+  margin-top: 24px;
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+.explanation h3 {
+  font-size: 16px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.explanation p {
+  margin: 10px 0 0;
+}
+
+/* calculator + reference sheet */
+.tool-btn {
+  padding: 0 8px;
+}
+.refsheet {
+  position: fixed;
+  z-index: 60;
+  top: 80px;
+  right: 16px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 110px);
+  overflow: auto;
+  padding: 16px 20px;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(33, 36, 44, 0.25);
+  font-size: 15px;
+}
+.refsheet ul {
+  margin: 8px 0;
+  padding-left: 18px;
+}
+.refsheet li {
+  margin: 6px 0;
+}
+.refsheet p {
+  margin: 6px 0 0;
+  color: var(--text-2);
+}
+
+@media (max-width: 640px) {
+  .subnav-inner {
+    padding: 8px 12px;
+  }
+  .subject-tab {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+  .view-tabs .nav-link {
+    padding: 0 8px;
+  }
+  .tool-btn {
+    font-size: 13px;
+    padding: 0 4px;
   }
 }

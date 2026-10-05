@@ -1,4 +1,4 @@
-import type { Difficulty } from './types'
+import type { Difficulty, Subject } from './types'
 import { DIFFICULTIES, skillBySlug } from './data'
 import type { Progress } from './progress'
 
@@ -12,11 +12,11 @@ export interface SessionConfig {
 }
 export type Result = 'correct' | 'incorrect' | 'skipped' | null
 
-export function configFromParams(p: URLSearchParams): SessionConfig {
+export function configFromParams(subject: Subject, p: URLSearchParams): SessionConfig {
   const d = (p.get('d') ?? 'EMH').split('').map((c) => DIFFICULTIES.find((x) => x[0] === c)).filter(Boolean) as Difficulty[]
   const mode = (['new', 'mistakes', 'all'] as const).find((m) => m === p.get('m')) ?? 'all'
   return {
-    skills: (p.get('s') ?? '').split(',').filter((s) => skillBySlug(s)),
+    skills: (p.get('s') ?? '').split(',').filter((s) => skillBySlug(subject, s)),
     difficulties: d.length ? d : DIFFICULTIES,
     mode,
     size: Math.min(50, Math.max(1, Number(p.get('n')) || 10)),

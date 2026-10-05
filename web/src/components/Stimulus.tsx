@@ -1,8 +1,8 @@
 import type { Block } from '../types'
 import { figureUrl } from '../data'
 
-// All html strings come from our own extraction of the CBQB PDF and only contain
-// <em> <strong> <u> <sub> <sup>, so rendering them directly is safe.
+// All html strings come from our own extraction of the CBQB PDFs: <em> <strong> <u> <sub> <sup> <br>, plus (Math)
+// <span class="m"> math cut from the PDF, <img class="fig"> graphs and <table class="mtable">, so rendering them directly is safe.
 export const Html = ({ html, as: Tag = 'span', className }: { html: string; as?: 'span' | 'p' | 'div' | 'li' | 'figcaption'; className?: string }) => (
   <Tag className={className} dangerouslySetInnerHTML={{ __html: html }} />
 )
@@ -10,7 +10,7 @@ export const Html = ({ html, as: Tag = 'span', className }: { html: string; as?:
 function BlockView({ b }: { b: Block }) {
   switch (b.type) {
     case 'p':
-      return <Html as="p" html={b.html} />
+      return <Html as="p" className={b.center ? 'stim-center' : undefined} html={b.html} />
     case 'label':
       return <Html as="p" className="stim-label" html={b.html} />
     case 'list':

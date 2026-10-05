@@ -21,3 +21,5 @@ __pycache__/
 .vercel
 .env*
 !.env.example
+pipeline/.venv/
+pipeline/preview/

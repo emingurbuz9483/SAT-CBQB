@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CatalogEntry, Difficulty } from '../types'
-import { DIFFICULTIES, DOMAINS, loadCatalog, skillSlug } from '../data'
+import type { CatalogEntry, Difficulty, Subject } from '../types'
+import { DIFFICULTIES, SUBJECTS, loadCatalog, skillSlug, subjectPath } from '../data'
 import { accountsEnabled, signInWithGoogle, useAccount, type Progress } from '../progress'
 import { supabase } from '../supabase'
 import { navigate } from '../router'
@@ -64,7 +64,8 @@ const dayKey = (t: number) => {
 }
 const fmtSeconds = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}m ${Math.round(s % 60)}s` : `${Math.round(s)}s`)
 
-export function Analytics({ progress }: { progress: Progress }) {
+export function Analytics({ subject, progress }: { subject: Subject; progress: Progress }) {
+  const { domains: DOMAINS, name } = SUBJECTS[subject]
   const [catalog, setCatalog] = useState<CatalogEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState<{ user: string; rows: Attempt[] } | null>(null)
@@ -72,8 +73,8 @@ export function Analytics({ progress }: { progress: Progress }) {
   const attempts = account && loaded?.user === account.id ? loaded.rows : null
 
   useEffect(() => {
-    loadCatalog().then(setCatalog, (e: Error) => setError(e.message))
-  }, [])
+    loadCatalog(subject).then(setCatalog, (e: Error) => setError(e.message))
+  }, [subject])
   useEffect(() => {
     if (!account) return
     let live = true
@@ -105,24 +106,30 @@ export function Analytics({ progress }: { progress: Progress }) {
     return { all, byDomain, bySkill, bySkillDiff, byDiff }
   }, [catalog, progress])
 
+  const skillSet = useMemo(() => new Set(DOMAINS.flatMap((d) => d.skills)), [DOMAINS])
+
   const time = useMemo(() => {
     if (!attempts?.length) return null
     const bySkill = new Map<string, { n: number; sum: number }>()
     let sum = 0
+    let n = 0
     for (const a of attempts) {
+      if (!skillSet.has(a.skill)) continue // the other subject's attempts
+      n++
       const s = bySkill.get(a.skill) ?? { n: 0, sum: 0 }
       s.n++
       s.sum += a.seconds
       bySkill.set(a.skill, s)
       sum += a.seconds
     }
-    return { avg: sum / attempts.length, bySkill }
-  }, [attempts])
+    return n ? { avg: sum / n, bySkill } : null
+  }, [attempts, skillSet])
 
   // daily activity: from the full Check log when signed in, otherwise from each question's latest answer
   const activity = useMemo(() => {
-    const events = attempts?.length
-      ? attempts.map((a) => ({ at: a.at, correct: a.correct }))
+    const mine = attempts?.filter((a) => skillSet.has(a.skill))
+    const events = mine?.length
+      ? mine.map((a) => ({ at: a.at, correct: a.correct }))
       : (catalog ?? []).flatMap((e) => (progress[e.id] ? [{ at: progress[e.id].t, correct: progress[e.id].r === 'c' }] : []))
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -149,8 +156,8 @@ export function Analytics({ progress }: { progress: Progress }) {
       streak++
       cursor.setDate(cursor.getDate() - 1)
     }
-    return { days, max: Math.max(1, ...days.map((d) => d.done)), streak, fromLog: !!attempts?.length }
-  }, [attempts, catalog, progress])
+    return { days, max: Math.max(1, ...days.map((d) => d.done)), streak, fromLog: !!mine?.length }
+  }, [attempts, catalog, progress, skillSet])
 
   const ranked = useMemo(
     () =>
@@ -158,7 +165,7 @@ export function Analytics({ progress }: { progress: Progress }) {
         .map((s) => ({ skill: s, t: stats.bySkill.get(s) ?? tally() }))
         .filter((x) => x.t.done >= MIN_ANSWERS)
         .sort((a, b) => a.t.correct / a.t.done - b.t.correct / b.t.done || b.t.done - a.t.done),
-    [stats],
+    [stats, DOMAINS],
   )
   const focus = ranked.filter((x) => x.t.correct / x.t.done < 0.8).slice(0, 3)
   const strengths = ranked
@@ -168,7 +175,7 @@ export function Analytics({ progress }: { progress: Progress }) {
   const untouched = DOMAINS.flatMap((d) => d.skills).filter((s) => !stats.bySkill.get(s)?.done)
 
   const practice = (skill: string, mode: Mode, difficulties: Difficulty[] = DIFFICULTIES) =>
-    navigate('/practice', configToParams({ skills: [skillSlug(skill)], difficulties, mode, size: 10 }))
+    navigate(subjectPath(subject, '/practice'), configToParams({ skills: [skillSlug(skill)], difficulties, mode, size: 10 }))
 
   const overall = pct(stats.all)
 
@@ -176,7 +183,7 @@ export function Analytics({ progress }: { progress: Progress }) {
     <div className="home analytics">
       <section className="hero">
         <div className="hero-inner">
-          <p className="eyebrow">Your analytics</p>
+          <p className="eyebrow">Your analytics · {name}</p>
           <h1>How you’re doing, topic by topic</h1>
           <p className="hero-sub">Accuracy counts only your first try on each question, the same way the SAT scores you.</p>
           <div className="hero-stats">
@@ -209,7 +216,7 @@ export function Analytics({ progress }: { progress: Progress }) {
           <div className="an-empty">
             <h2>No answers yet</h2>
             <p className="muted">Answer a few questions and your topic breakdown will show up here.</p>
-            <button className="btn primary" onClick={() => navigate('/')}>
+            <button className="btn primary" onClick={() => navigate(subjectPath(subject, '/'))}>
               Start practicing
             </button>
           </div>

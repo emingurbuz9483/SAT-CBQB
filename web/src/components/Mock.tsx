@@ -1,23 +1,28 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { CatalogEntry, Letter, Question } from '../types'
-import { DOMAINS, loadCatalog, loadSkill, skillSlug } from '../data'
+import type { CatalogEntry, Letter, Question, Subject } from '../types'
+import { SUBJECTS, loadCatalog, loadSkill, skillSlug, subjectPath } from '../data'
 import { logCheck, recordResult, type Progress } from '../progress'
 import { navigate } from '../router'
-import { BLUEPRINT, MOCK_MINUTES, MODULE_DIFFICULTIES, buildMock, loadMock, saveMock, timeLabel, type MockState, type ModuleNo } from '../mock'
+import { MOCK, MODULE_DIFFICULTIES, buildMock, loadMock, mockSkills, saveMock, timeLabel, type MockState, type ModuleNo } from '../mock'
+import { correctLabel, isCorrect, isSpr } from '../answer'
 import { QuestionView } from './QuestionView'
+import { MathTools } from './MathTools'
 import { CheckIcon, ChevronIcon, CloseIcon, CrossIcon, FlagIcon } from './Icons'
 
 const LETTERS: Letter[] = ['A', 'B', 'C', 'D']
-const preview = (q: Question) => q.stem.replace(/<[^>]+>/g, '')
+const preview = (q: Question) => q.stem.replace(/<span class="m"[^>]*><\/span>/g, '▢').replace(/<[^>]+>/g, '')
 
 type View = { kind: 'test' } | { kind: 'check' } | { kind: 'results' } | { kind: 'review'; i: number }
 
-function newTest(catalog: CatalogEntry[], progress: Progress, module: ModuleNo): MockState {
-  const { ids, repeats } = buildMock(catalog, progress, module)
-  return { module, ids, repeats, answers: {}, marked: [], crossed: {}, secs: {}, idx: 0, deadline: Date.now() + MOCK_MINUTES * 60_000 }
+function newTest(subject: Subject, catalog: CatalogEntry[], progress: Progress, module: ModuleNo): MockState {
+  const { ids, repeats } = buildMock(subject, catalog, progress, module)
+  return { module, ids, repeats, answers: {}, marked: [], crossed: {}, secs: {}, idx: 0, deadline: Date.now() + MOCK[subject].minutes * 60_000 }
 }
 
-export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boolean; progress: Progress }) {
+export function Mock({ subject, module, fresh, progress }: { subject: Subject; module: ModuleNo; fresh: boolean; progress: Progress }) {
+  const home = subjectPath(subject, '/')
+  const MOCK_MINUTES = MOCK[subject].minutes
+  const subjectName = SUBJECTS[subject].name
   const [test, setTest] = useState<MockState | null>(null)
   const [qs, setQs] = useState<Map<string, Question> | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -34,14 +39,14 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
   // A link from the home page (fresh) starts over unless a module is still in progress.
   useEffect(() => {
     let alive = true
-    const saved = loadMock()
+    const saved = loadMock(subject)
     const resume = saved && saved.module === module && !(fresh && saved.submittedAt) ? saved : null
-    if (fresh) history.replaceState(null, '', `#/mock?m=${module}`)
-    Promise.all([loadCatalog(), Promise.all(BLUEPRINT.map(([s]) => loadSkill(skillSlug(s))))])
+    if (fresh) history.replaceState(null, '', `#${subjectPath(subject, '/mock')}?m=${module}`)
+    Promise.all([loadCatalog(subject), Promise.all(mockSkills(subject).map((s) => loadSkill(subject, skillSlug(s))))])
       .then(([cat, lists]) => {
         if (!alive) return
         catalog.current = cat
-        const t = resume ?? newTest(cat, progress, module)
+        const t = resume ?? newTest(subject, cat, progress, module)
         submitted.current = !!t.submittedAt
         setQs(new Map(lists.flat().map((q) => [q.id, q])))
         setTest(t)
@@ -56,8 +61,8 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
   }, [module])
 
   useEffect(() => {
-    if (test) saveMock(test)
-  }, [test])
+    if (test) saveMock(subject, test)
+  }, [subject, test])
 
   const running = !!test && !test.submittedAt
 
@@ -83,7 +88,7 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
       const choice = test.answers[id]
       const q = qs.get(id)
       if (!choice || !q) continue // unanswered questions stay "new"
-      const correct = choice === q.answer
+      const correct = isCorrect(q, choice)
       recordResult(id, correct)
       logCheck({ id, domain: q.domain, skill: q.skill, difficulty: q.difficulty, choice, correct, attempt: 1, seconds: test.secs[id] ?? 0 })
     }
@@ -110,7 +115,8 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
   useEffect(() => {
     if (!running || view.kind !== 'test') return
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement) return
+      if (qs && isSpr(qs.get(test?.ids[test.idx] ?? '') ?? ({} as Question))) return
       let i = LETTERS.indexOf(e.key.toUpperCase() as Letter)
       if (i < 0) i = ['1', '2', '3', '4'].indexOf(e.key)
       if (i < 0) return
@@ -122,7 +128,7 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [running, view.kind])
+  }, [running, view.kind, qs, test])
 
   if (error) return <Centered>Couldn’t load the test ({error}).</Centered>
   if (!test || !qs) return <Centered>Building your test…</Centered>
@@ -132,7 +138,10 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
   const left = test.deadline - now
 
   if (view.kind === 'results' || view.kind === 'review') {
-    const isRight = (id: string) => test.answers[id] === qs.get(id)?.answer
+    const isRight = (id: string) => {
+      const q = qs.get(id)
+      return !!q && isCorrect(q, test.answers[id])
+    }
     const correct = test.ids.filter(isRight).length
 
     if (view.kind === 'review') {
@@ -142,21 +151,27 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
       const choice = test.answers[id] ?? null
       return (
         <div className="practice">
-          <TestHeader crumb={`Mockup Test · Module ${test.module}`} title={`Review: question ${i + 1} of ${n}`} onExit={() => setView({ kind: 'results' })} exitLabel="Back to results" />
-          <main className={`practice-main ${q.stimulus.length ? 'wide' : ''}`}>
+          <TestHeader
+            crumb={`${subjectName} · Mockup Test · Module ${test.module}`}
+            title={`Review: question ${i + 1} of ${n}`}
+            onExit={() => setView({ kind: 'results' })}
+            exitLabel="Back to results"
+            tools={subject === 'math'}
+          />
+          <main className={`practice-main ${q.stimulus.length && q.test !== 'Math' ? 'wide' : ''}`}>
             <p className={`mock-verdict ${choice ? (isRight(id) ? 'right' : 'wrong') : ''}`}>
               {choice
                 ? isRight(id)
                   ? `You answered ${choice}. Correct!`
-                  : `You answered ${choice}. The correct answer is ${q.answer}.`
-                : `You didn’t answer this one. The correct answer is ${q.answer}.`}
+                  : `You answered ${choice}. The correct answer is ${correctLabel(q)}.`
+                : `You didn’t answer this one. The correct answer is ${correctLabel(q)}.`}
             </p>
             <QuestionView
               key={id}
               q={q}
               phase="done"
               selected={choice}
-              tried={choice && !isRight(id) ? [choice] : []}
+              tried={choice && !isRight(id) && !isSpr(q) ? [choice] : []}
               crossed={[]}
               onSelect={() => {}}
               onToggleCross={() => {}}
@@ -188,7 +203,7 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
       <div className="summary">
         <div className="summary-card">
           <p className="crumb">
-            Mockup Test · Module {test.module} · {lo} and {hi}
+            {subjectName} Mockup Test · Module {test.module} · {lo} and {hi}
           </p>
           <h1>
             {correct} of {n} correct
@@ -220,7 +235,7 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
               </tr>
             </thead>
             <tbody>
-              {DOMAINS.map((d) => {
+              {SUBJECTS[subject].domains.map((d) => {
                 const ids = test.ids.filter((id) => d.skills.includes(qs.get(id)?.skill ?? ''))
                 return (
                   <tr key={d.name}>
@@ -251,14 +266,14 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
             })}
           </ol>
           <div className="summary-actions">
-            <button className="btn secondary" onClick={() => navigate('/')}>
+            <button className="btn secondary" onClick={() => navigate(home)}>
               Back to skills
             </button>
             <button
               className="btn primary"
               onClick={() => {
                 submitted.current = false
-                setTest(newTest(catalog.current, progress, test.module))
+                setTest(newTest(subject, catalog.current, progress, test.module))
                 setView({ kind: 'test' })
                 setNow(Date.now())
                 window.scrollTo(0, 0)
@@ -285,7 +300,7 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
   if (view.kind === 'check')
     return (
       <div className="practice">
-        <TestHeader crumb="Reading and Writing · Mockup Test" title={`Module ${test.module}`} timer={timer} onExit={() => navigate('/')} />
+        <TestHeader crumb={`${subjectName} · Mockup Test`} title={`Module ${test.module}`} timer={timer} onExit={() => navigate(home)} />
         <main className="practice-main mock-check">
           <h2>Check your work</h2>
           <p>Click a question number to go back to it. When you’re ready, submit the module to see your score.</p>
@@ -315,8 +330,14 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
   const marked = test.marked.includes(id)
   return (
     <div className="practice">
-      <TestHeader crumb="Reading and Writing · Mockup Test" title={`Module ${test.module}`} timer={timer} onExit={() => navigate('/')} />
-      <main className={`practice-main ${q.stimulus.length ? 'wide' : ''}`}>
+      <TestHeader
+        crumb={`${subjectName} · Mockup Test`}
+        title={`Module ${test.module}`}
+        timer={timer}
+        onExit={() => navigate(home)}
+        tools={subject === 'math'}
+      />
+      <main className={`practice-main ${q.stimulus.length && q.test !== 'Math' ? 'wide' : ''}`}>
         <div className="mock-qhead">
           <span className="mock-num">{test.idx + 1}</span>
           <button
@@ -335,7 +356,13 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
           selected={test.answers[id] ?? null}
           tried={[]}
           crossed={test.crossed[id] ?? []}
-          onSelect={(l) => update((s) => ({ ...s, answers: { ...s.answers, [id]: l }, crossed: { ...s.crossed, [id]: (s.crossed[id] ?? []).filter((x) => x !== l) } }))}
+          onSelect={(l) =>
+            update((s) => {
+              const answers = { ...s.answers, [id]: l }
+              if (!l) delete answers[id] // cleared grid-in box
+              return { ...s, answers, crossed: { ...s.crossed, [id]: (s.crossed[id] ?? []).filter((x) => x !== l) } }
+            })
+          }
           onToggleCross={(l) =>
             update((s) => {
               const c = s.crossed[id] ?? []
@@ -391,7 +418,21 @@ export function Mock({ module, fresh, progress }: { module: ModuleNo; fresh: boo
   )
 }
 
-function TestHeader({ crumb, title, timer, onExit, exitLabel = 'Exit test (your progress is saved)' }: { crumb: string; title: string; timer?: ReactNode; onExit: () => void; exitLabel?: string }) {
+function TestHeader({
+  crumb,
+  title,
+  timer,
+  onExit,
+  exitLabel = 'Exit test (your progress is saved)',
+  tools = false,
+}: {
+  crumb: string
+  title: string
+  timer?: ReactNode
+  onExit: () => void
+  exitLabel?: string
+  tools?: boolean
+}) {
   return (
     <div className="practice-sub">
       <div className="practice-sub-inner">
@@ -401,6 +442,7 @@ function TestHeader({ crumb, title, timer, onExit, exitLabel = 'Exit test (your 
         </div>
         {timer}
         <div className="practice-meta">
+          {tools && <MathTools />}
           <button className="icon-btn" aria-label={exitLabel} title={exitLabel} onClick={onExit}>
             <CloseIcon />
           </button>
