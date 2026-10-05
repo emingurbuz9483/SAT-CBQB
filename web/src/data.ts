@@ -88,3 +88,11 @@ export function loadSkill(subject: Subject, slug: string): Promise<Question[]> {
 }
 
 export const figureUrl = (src: string) => `${BASE}data/${src}`
+
+/** Start downloading the math sprites of a set of questions, so math doesn't pop in late. */
+export function preloadMath(qs: Question[]) {
+  for (const q of qs) {
+    const m = /url\((data\/math\/sprites\/[0-9a-f]{8}\.png)\)/.exec(q.stem + JSON.stringify(q.choices) + JSON.stringify(q.stimulus))
+    if (m) new Image().src = `${BASE}${m[1]}`
+  }
+}

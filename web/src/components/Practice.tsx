@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Difficulty, Letter, Question, Subject } from '../types'
-import { DIFFICULTIES, loadSkill, skillBySlug, subjectPath } from '../data'
+import { DIFFICULTIES, loadSkill, preloadMath, skillBySlug, subjectPath } from '../data'
 import { correctLabel, isCorrect, isSpr } from '../answer'
 import { MathTools } from './MathTools'
 import { configToParams, inPool, shuffle, type Result, type SessionConfig } from '../session'
@@ -60,6 +60,7 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
           : shuffle(all.filter((q) => config.difficulties.includes(q.difficulty) && inPool(config.mode, q.id, progress)))
               .slice(0, config.size)
               .sort((a, b) => order(a.difficulty) - order(b.difficulty))
+        preloadMath(picked)
         setQs(picked)
         setResults(picked.map(() => null))
         setIdx(0)

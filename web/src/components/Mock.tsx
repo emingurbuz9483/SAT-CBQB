@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { CatalogEntry, Letter, Question, Subject } from '../types'
-import { SUBJECTS, loadCatalog, loadSkill, skillSlug, subjectPath } from '../data'
+import { SUBJECTS, loadCatalog, loadSkill, preloadMath, skillSlug, subjectPath } from '../data'
 import { logCheck, recordResult, type Progress } from '../progress'
 import { navigate } from '../router'
 import { MOCK, MODULE_DIFFICULTIES, buildMock, loadMock, mockSkills, saveMock, timeLabel, type MockState, type ModuleNo } from '../mock'
@@ -48,7 +48,9 @@ export function Mock({ subject, module, fresh, progress }: { subject: Subject; m
         catalog.current = cat
         const t = resume ?? newTest(subject, cat, progress, module)
         submitted.current = !!t.submittedAt
-        setQs(new Map(lists.flat().map((q) => [q.id, q])))
+        const byId = new Map(lists.flat().map((q) => [q.id, q]))
+        preloadMath(t.ids.map((id) => byId.get(id)).filter((q): q is Question => !!q))
+        setQs(byId)
         setTest(t)
         setView({ kind: t.submittedAt ? 'results' : 'test' })
       })
