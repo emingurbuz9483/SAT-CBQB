@@ -99,6 +99,16 @@ export function Home({ progress }: { progress: Progress }) {
                 <strong>{Math.round((correct / answered) * 100)}%</strong>
                 <span>right on first try</span>
               </div>
+              <a
+                className="hero-link"
+                href="#/analytics"
+                onClick={(e) => {
+                  e.preventDefault()
+                  navigate('/analytics')
+                }}
+              >
+                See your topic breakdown →
+              </a>
             </div>
           )}
         </div>

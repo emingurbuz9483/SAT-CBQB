@@ -30,6 +30,12 @@ export const ChevronIcon = ({ size = 16, up = false }: { size?: number; up?: boo
   </svg>
 )
 
+export const ChartIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...base} strokeWidth={2.2}>
+    <path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />
+  </svg>
+)
+
 export const Logo = () => (
   <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
     <rect x="2" y="2" width="28" height="28" rx="8" fill="#14bf96" />

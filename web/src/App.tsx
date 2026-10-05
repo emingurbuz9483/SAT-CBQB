@@ -3,8 +3,9 @@ import { useProgress } from './progress'
 import { Home } from './components/Home'
 import { Practice } from './components/Practice'
 import { Mock } from './components/Mock'
+import { Analytics } from './components/Analytics'
 import { configFromParams } from './session'
-import { Logo } from './components/Icons'
+import { ChartIcon, Logo } from './components/Icons'
 import { AccountButton } from './components/Account'
 
 export default function App() {
@@ -17,7 +18,20 @@ export default function App() {
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <span aria-hidden="true" />
+          <nav className="topbar-left">
+            <a
+              className={`nav-link ${route.path === '/analytics' ? 'on' : ''}`}
+              href="#/analytics"
+              aria-current={route.path === '/analytics' ? 'page' : undefined}
+              onClick={(e) => {
+                e.preventDefault()
+                navigate('/analytics')
+              }}
+            >
+              <ChartIcon />
+              <span>Analytics</span>
+            </a>
+          </nav>
           <a
             className="brand"
             href="#/"
@@ -36,7 +50,9 @@ export default function App() {
           </div>
         </div>
       </header>
-      {mockModule ? (
+      {route.path === '/analytics' ? (
+        <Analytics progress={progress} />
+      ) : mockModule ? (
         <Mock key={mockModule} module={mockModule} fresh={route.params.has('fresh')} progress={progress} />
       ) : practice && practice.skills.length ? (
         <Practice config={practice} progress={progress} />
