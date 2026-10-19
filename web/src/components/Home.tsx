@@ -5,6 +5,7 @@ import { accountsEnabled, resetProgress, useAccount, useStorageMode, type Progre
 import { navigate } from '../router'
 import { configToParams, inPool, type Mode } from '../session'
 import { MOCK, MODULE_DIFFICULTIES, loadMock, timeLabel, type ModuleNo } from '../mock'
+import { DRILL_MINUTES, loadDrill, loadDrillHistory } from '../drill'
 
 const PREFS = 'cbqb-prefs-v1'
 interface Prefs {
@@ -205,6 +206,8 @@ export function Home({ subject, progress }: { subject: Subject; progress: Progre
           )}
         </section>
 
+        <DrillCard subject={subject} ready={!!catalog} />
+
         {DOMAINS.map((d) => {
           const domainPool = d.skills.reduce((a, s) => a + (stats.get(s)?.pool ?? 0), 0)
           return (
@@ -290,5 +293,46 @@ export function Home({ subject, progress }: { subject: Subject; progress: Progre
         </footer>
       </div>
     </div>
+  )
+}
+
+/** Speed Drill: pick 5, 10 or 20 minutes and answer as many mixed-skill questions as you can. */
+function DrillCard({ subject, ready }: { subject: Subject; ready: boolean }) {
+  const [now] = useState(() => Date.now())
+  const saved = loadDrill(subject)
+  const inProgress = saved && !saved.finishedAt && saved.deadline > now ? saved : null
+  const history = loadDrillHistory().filter((r) => r.subject === subject)
+  return (
+    <section className="mock-card">
+      <div className="mock-card-head">
+        <div>
+          <h2>Speed Drill</h2>
+          <p className="muted">
+            Answer as many questions as you can before time runs out. Skills rotate evenly and difficulty is random. The drill closes by itself when the clock hits
+            zero.
+          </p>
+        </div>
+      </div>
+      <div className="mock-options drill-options">
+        {inProgress && (
+          <button className="mock-option" onClick={() => navigate(subjectPath(subject, '/drill'))}>
+            <strong>{inProgress.minutes}-minute drill</strong>
+            <span className="muted">In progress · {timeLabel(inProgress.deadline - now)} left</span>
+            <span className="mock-option-go">Resume →</span>
+          </button>
+        )}
+        {DRILL_MINUTES.map((m) => {
+          const mine = history.filter((r) => r.minutes === m)
+          const best = mine.length ? Math.max(...mine.map((r) => r.correct)) : null
+          return (
+            <button key={m} className="mock-option" disabled={!ready} onClick={() => navigate(subjectPath(subject, '/drill'), { t: String(m) })}>
+              <strong>{m} minutes</strong>
+              <span className="muted">{best === null ? 'Not tried yet' : `Best: ${best} correct`}</span>
+              <span className="mock-option-go">Start →</span>
+            </button>
+          )
+        })}
+      </div>
+    </section>
   )
 }

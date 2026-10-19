@@ -5,6 +5,7 @@ import { accountsEnabled, signInWithGoogle, useAccount, type Progress } from '..
 import { supabase } from '../supabase'
 import { navigate } from '../router'
 import { configToParams, type Mode } from '../session'
+import { DRILL_MINUTES, loadDrillHistory } from '../drill'
 
 /** A skill needs this many answers before we call it a strength or a weakness. */
 const MIN_ANSWERS = 3
@@ -275,6 +276,8 @@ export function Analytics({ subject, progress }: { subject: Subject; progress: P
                 </section>
               </div>
 
+              <DrillStats subject={subject} />
+
               <section className="an-section">
                 <h2 className="an-title">By difficulty</h2>
                 <div className="an-diffs">
@@ -414,5 +417,85 @@ export function Analytics({ subject, progress }: { subject: Subject; progress: P
         )}
       </div>
     </div>
+  )
+}
+
+/** Speed Drill results: the best of each length and the latest drills, to see whether pace and accuracy improve. */
+function DrillStats({ subject }: { subject: Subject }) {
+  const [drills] = useState(() => loadDrillHistory().filter((r) => r.subject === subject))
+  const start = (m: number) => navigate(subjectPath(subject, '/drill'), { t: String(m) })
+  const accuracy = (r: { answered: number; correct: number }) => (r.answered ? `${Math.round((r.correct / r.answered) * 100)}%` : '–')
+  return (
+    <section className="an-section">
+      <h2 className="an-title">Speed drills</h2>
+      {drills.length === 0 ? (
+        <div className="an-card drill-empty">
+          <p className="muted">Timed drills show how many questions you answer per minute and how that changes over time.</p>
+          <button className="btn primary small" onClick={() => start(5)}>
+            Try a 5-minute drill
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="an-diffs">
+            {DRILL_MINUTES.map((m) => {
+              const mine = drills.filter((r) => r.minutes === m)
+              if (!mine.length)
+                return (
+                  <div key={m} className="an-diff">
+                    <span className="drill-len">{m} minutes</span>
+                    <strong>–</strong>
+                    <button className="link" onClick={() => start(m)}>
+                      Not tried yet · Start one →
+                    </button>
+                  </div>
+                )
+              const best = mine.reduce((a, r) => (r.correct > a.correct || (r.correct === a.correct && r.answered > a.answered) ? r : a))
+              const last = mine[mine.length - 1]
+              return (
+                <div key={m} className="an-diff">
+                  <span className="drill-len">{m} minutes</span>
+                  <strong>{best.correct} correct</strong>
+                  <span className="muted">
+                    best of {mine.length} · {best.answered} answered · last: {last.correct} correct, {(last.answered / m).toFixed(1)}/min
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="table-scroll drill-table">
+            <table className="an-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th className="num">Length</th>
+                  <th className="num">Answered</th>
+                  <th className="num">Correct</th>
+                  <th className="num">Accuracy</th>
+                  <th className="num">Per question</th>
+                  <th className="num">Per minute</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drills
+                  .slice(-10)
+                  .reverse()
+                  .map((r) => (
+                    <tr key={r.at}>
+                      <th scope="row">{new Date(r.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</th>
+                      <td className="num">{r.minutes} min</td>
+                      <td className="num">{r.answered}</td>
+                      <td className="num">{r.correct}</td>
+                      <td className="num">{accuracy(r)}</td>
+                      <td className="num">{r.answered ? fmtSeconds(r.seconds / r.answered) : '–'}</td>
+                      <td className="num">{(r.answered / r.minutes).toFixed(1)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
   )
 }

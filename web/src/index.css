@@ -1068,6 +1068,61 @@ sup {
   }
 }
 
+/* ---------- speed drill ---------- */
+.drill-options {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.drill-skill {
+  font-size: 14px;
+  font-weight: 700;
+}
+.drill-count {
+  color: var(--text-2);
+}
+.drill-count strong {
+  color: var(--text);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.drill-stats {
+  flex-wrap: wrap;
+  gap: 16px 32px;
+}
+.drill-best {
+  margin: 0 0 12px;
+  color: var(--green-text);
+  font-weight: 700;
+}
+.drill-secs {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text-2);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.drill-len {
+  font-weight: 700;
+}
+.an-diff .link {
+  font-size: 14px;
+  text-align: left;
+}
+.drill-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.drill-empty p {
+  margin: 0;
+}
+.drill-table {
+  margin-top: 16px;
+}
+.drill-table .an-table th {
+  white-space: nowrap;
+}
+
 /* ---------- mockup test ---------- */
 .mock-card {
   margin-top: 32px;

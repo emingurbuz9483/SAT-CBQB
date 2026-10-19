@@ -4,6 +4,8 @@ import { Home } from './components/Home'
 import { Practice } from './components/Practice'
 import { Mock } from './components/Mock'
 import { Analytics } from './components/Analytics'
+import { Drill } from './components/Drill'
+import { DRILL_MINUTES } from './drill'
 import { configFromParams } from './session'
 import { SUBJECTS, subjectPath } from './data'
 import type { Subject } from './types'
@@ -26,7 +28,8 @@ export default function App() {
   const page = subject === 'math' ? route.path.slice(5) || '/' : route.path
   const practice = page === '/practice' ? configFromParams(subject, route.params) : null
   const mockModule = page === '/mock' ? ({ '1': 1, '2': 2 } as const)[route.params.get('m') ?? ''] : undefined
-  const browsing = !mockModule && !(practice && practice.skills.length)
+  const drillMinutes = DRILL_MINUTES.find((m) => String(m) === route.params.get('t')) ?? null
+  const browsing = !mockModule && page !== '/drill' && !(practice && practice.skills.length)
 
   return (
     <>
@@ -68,6 +71,8 @@ export default function App() {
       )}
       {page === '/analytics' ? (
         <Analytics key={subject} subject={subject} progress={progress} />
+      ) : page === '/drill' ? (
+        <Drill key={`${subject}-${route.params.toString()}`} subject={subject} minutes={drillMinutes} progress={progress} />
       ) : mockModule ? (
         <Mock key={`${subject}-${mockModule}`} subject={subject} module={mockModule} fresh={route.params.has('fresh')} progress={progress} />
       ) : practice && practice.skills.length ? (
