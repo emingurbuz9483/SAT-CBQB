@@ -483,7 +483,7 @@ function DrillStats({ subject }: { subject: Subject }) {
                   .map((r) => (
                     <tr key={r.at}>
                       <th scope="row">{new Date(r.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</th>
-                      <td className="num">{r.minutes} min</td>
+                      <td className="num">{r.minutes} min{r.quit ? ' (quit)' : ''}</td>
                       <td className="num">{r.answered}</td>
                       <td className="num">{r.correct}</td>
                       <td className="num">{accuracy(r)}</td>

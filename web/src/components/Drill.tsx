@@ -31,6 +31,7 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
   const [choice, setChoice] = useState<string | null>(null)
   const [crossed, setCrossed] = useState<string[]>([])
   const [now, setNow] = useState(() => Date.now())
+  const [confirmQuit, setConfirmQuit] = useState(false)
   const [best, setBest] = useState<number | null>(null) // most correct answers in an earlier drill of this length
   const finished = useRef(false)
 
@@ -125,6 +126,7 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
         correct: totals.correct,
         skipped: totals.skipped,
         seconds: totals.seconds,
+        ...(done.finishedAt! < s.deadline && { quit: true }),
       })
       setDrill(done)
       setView({ kind: 'results' })
@@ -229,6 +231,8 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
   if (view.kind === 'results') {
     const { answered, correct, skipped, seconds, seen } = totals
     const newBest = best !== null && correct > best
+    // pace over the time actually used, so quitting early doesn't drag it down
+    const usedMinutes = Math.max(1 / 60, ((drill.finishedAt ?? now) - (drill.deadline - drill.minutes * 60_000)) / 60_000)
     return (
       <div className="summary">
         <div className="summary-card">
@@ -252,7 +256,7 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
               <span>per question</span>
             </div>
             <div>
-              <strong>{(answered / drill.minutes).toFixed(1)}</strong>
+              <strong>{(answered / usedMinutes).toFixed(1)}</strong>
               <span>answered per minute</span>
             </div>
             <div>
@@ -351,9 +355,24 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
       </main>
       <footer className="bottom-bar">
         <div className="bottom-inner">
-          <span className="drill-count">
-            <strong>{totals.answered}</strong> answered
-          </span>
+          {confirmQuit ? (
+            <span className="drill-quit">
+              End the drill now?{' '}
+              <button className="btn secondary small" onClick={() => finish(drill)}>
+                Yes, quit
+              </button>{' '}
+              <button className="btn text small" onClick={() => setConfirmQuit(false)}>
+                Keep going
+              </button>
+            </span>
+          ) : (
+            <span className="drill-count">
+              <button className="btn secondary small" onClick={() => setConfirmQuit(true)}>
+                Quit
+              </button>{' '}
+              <strong>{totals.answered}</strong> answered
+            </span>
+          )}
           <div className="actions">
             <button className="btn secondary" onClick={() => next(null)}>
               Skip

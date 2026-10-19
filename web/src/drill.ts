@@ -89,6 +89,7 @@ export interface DrillRecord {
   correct: number
   skipped: number
   seconds: number // time spent on the answered questions
+  quit?: boolean // ended before the clock ran out
 }
 
 const HISTORY = 'cbqb-drill-history-v1'

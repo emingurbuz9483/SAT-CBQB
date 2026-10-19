@@ -1084,6 +1084,10 @@ sup {
   font-size: 18px;
   font-variant-numeric: tabular-nums;
 }
+.drill-quit {
+  color: var(--text-2);
+  font-weight: 700;
+}
 .drill-stats {
   flex-wrap: wrap;
   gap: 16px 32px;
