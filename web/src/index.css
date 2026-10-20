@@ -2006,3 +2006,94 @@ img.fig {
     padding: 0 4px;
   }
 }
+.lb-loading {
+  margin-top: 24px;
+}
+.lb-list {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: #fff;
+}
+.lb-row + .lb-row {
+  border-top: 1px solid var(--line-soft);
+}
+.lb-row.me {
+  background: var(--blue-soft);
+}
+.lb-row.gap {
+  border-top: 2px dashed var(--line);
+}
+.lb-rank {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 900;
+  color: var(--text-2);
+}
+.lb-rank.top {
+  color: #fff;
+}
+.lb-rank.top-1 {
+  background: #e0a800;
+}
+.lb-rank.top-2 {
+  background: #9aa3b0;
+}
+.lb-rank.top-3 {
+  background: #c27a3a;
+}
+.lb-avatar {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  font-weight: 800;
+}
+.lb-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-name em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--blue);
+}
+.lb-stat {
+  width: 76px;
+  flex: none;
+  text-align: right;
+}
+.lb-stat strong,
+.lb-stat span {
+  display: block;
+}
+.lb-stat span {
+  font-size: 12px;
+  color: var(--text-2);
+}
+@media (max-width: 520px) {
+  .lb-row {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+  .lb-stat {
+    width: 60px;
+  }
+}

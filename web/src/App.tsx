@@ -5,11 +5,12 @@ import { Practice } from './components/Practice'
 import { Mock } from './components/Mock'
 import { Analytics } from './components/Analytics'
 import { Drill } from './components/Drill'
+import { Leaderboard } from './components/Leaderboard'
 import { DRILL_MINUTES } from './drill'
 import { configFromParams } from './session'
 import { SUBJECTS, subjectPath } from './data'
 import type { Subject } from './types'
-import { ChartIcon, Logo } from './components/Icons'
+import { ChartIcon, Logo, TrophyIcon } from './components/Icons'
 import { AccountButton } from './components/Account'
 
 const link = (path: string) => ({
@@ -52,18 +53,22 @@ export default function App() {
           <div className="subnav-inner">
             <div className="subject-tabs" role="tablist" aria-label="Subject">
               {(['rw', 'math'] as Subject[]).map((s) => (
-                <a key={s} role="tab" aria-selected={s === subject} className={`subject-tab ${s === subject ? 'on' : ''}`} {...link(subjectPath(s, page === '/analytics' ? '/analytics' : '/'))}>
+                <a key={s} role="tab" aria-selected={s === subject} className={`subject-tab ${s === subject ? 'on' : ''}`} {...link(subjectPath(s, page === '/analytics' || page === '/leaderboard' ? page : '/'))}>
                   {SUBJECTS[s].short}
                 </a>
               ))}
             </div>
             <div className="view-tabs">
-              <a className={`nav-link ${page !== '/analytics' ? 'on' : ''}`} aria-current={page !== '/analytics' ? 'page' : undefined} {...link(subjectPath(subject, '/'))}>
+              <a className={`nav-link ${page !== '/analytics' && page !== '/leaderboard' ? 'on' : ''}`} aria-current={page !== '/analytics' && page !== '/leaderboard' ? 'page' : undefined} {...link(subjectPath(subject, '/'))}>
                 Skills
               </a>
               <a className={`nav-link ${page === '/analytics' ? 'on' : ''}`} aria-current={page === '/analytics' ? 'page' : undefined} {...link(subjectPath(subject, '/analytics'))}>
                 <ChartIcon />
                 <span>Analytics</span>
+              </a>
+              <a className={`nav-link ${page === '/leaderboard' ? 'on' : ''}`} aria-current={page === '/leaderboard' ? 'page' : undefined} {...link(subjectPath(subject, '/leaderboard'))}>
+                <TrophyIcon />
+                <span>Leaderboard</span>
               </a>
             </div>
           </div>
@@ -71,6 +76,8 @@ export default function App() {
       )}
       {page === '/analytics' ? (
         <Analytics key={subject} subject={subject} progress={progress} />
+      ) : page === '/leaderboard' ? (
+        <Leaderboard key={subject} subject={subject} />
       ) : page === '/drill' ? (
         <Drill key={`${subject}-${route.params.toString()}`} subject={subject} minutes={drillMinutes} progress={progress} />
       ) : mockModule ? (

@@ -36,6 +36,12 @@ export const ChartIcon = ({ size = 18 }: { size?: number }) => (
   </svg>
 )
 
+export const TrophyIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...base} strokeWidth={2.2}>
+    <path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8M10 17h4" />
+  </svg>
+)
+
 export const Logo = () => (
   <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
     <rect x="2" y="2" width="28" height="28" rx="8" fill="#14bf96" />
