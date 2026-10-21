@@ -92,8 +92,10 @@ def load_page(doc, pno):
         f = dr.get('fill')
         if f == (1.0, 1.0, 1.0) and not dr.get('color'): continue     # white backgrounds
         if f and len(f) == 3 and f[0] > 0.8 and f[1] > 0.8 and f[2] < 0.5: continue   # yellow "Math output error" highlights
+        # a drawing on top of a text glyph is part of it; one merely next to a glyph is math
+        # (the t of "= t," sits flush against the comma)
         if r.width <= 14 and r.height <= 16 and any(
-                c.x0 - 3.5 <= r.x0 and r.x1 <= c.x1 + 3.5 and c.y0 - .7 <= r.y0 and r.y1 <= c.y1 + .7
+                overlap(c.x0, c.x1, r.x0, r.x1) > 0.5 * r.width and c.y0 - .7 <= r.y0 and r.y1 <= c.y1 + .7
                 for c in buckets.get(int(((r.y0 + r.y1) / 2) // 10), ())):
             continue
         draws.append({'r': (r.x0, r.y0, r.x1, r.y1), 'items': len(dr['items'])})
@@ -369,6 +371,35 @@ def page_objects(doc, pno, top, rend, issues):
     for r in rfigs:
         hit = [f for f in figs if near(f, r, 0)]
         figs = [f for f in figs if not near(f, r, 0)] + [bbox_of([r] + hit)]
+    # axis titles, side lengths and "Note: Figure not drawn to scale." are glyph outlines set a few points
+    # away from the drawing: whole words of them that are not on a line of body text join the figure
+    if figs:
+        body = [c for c in chars if not c.fig and not c.c.isspace()]
+        def on_text_line(w):
+            return any(overlap(c.y0, c.y1, w[1], w[3]) > 0.5 * min(c.y1 - c.y0, w[3] - w[1]) for c in body)
+        words = [w for w in (bbox_of(g) for g in components(glyphs + [box(k) for k in inks if not k.img], 2.5))
+                 if not on_text_line(w)]
+        changed = True
+        while changed:
+            changed = False
+            for i, f in enumerate(figs):
+                for w in words:
+                    # a lone letter naming a line can sit further out, past the line's end
+                    reach = 24 if w[2] - w[0] < 12 and w[3] - w[1] < 12 else 12
+                    if near(w, f, reach) and union(w, f) != f: figs[i] = f = union(f, w); changed = True
+            figs = [bbox_of(g) for g in components(figs, 0)]
+            # a box plot and its axis, a chart and its note or rotated axis title: a thin strip close to a figure
+            # is part of it (graphs stacked as answer choices are both large, and stay apart)
+            thin = lambda f: min(f[2] - f[0], f[3] - f[1]) < 40
+            line = lambda f: f[3] - f[1] < 20                          # one line of text, e.g. the note
+            def joins(a, b):
+                if (line(a) or line(b)) and overlap(a[0], a[2], b[0], b[2]) > 0 and near(a, b, 30): return True
+                return (thin(a) or thin(b)) and near(a, b, 20)
+            for i in range(len(figs)):
+                for j in range(i + 1, len(figs)):
+                    if joins(figs[i], figs[j]):
+                        figs[j] = union(figs[i], figs[j]); figs[i] = None; changed = True; break
+            figs = [f for f in figs if f is not None]
     out = []
     for f in figs:
         body = sum(1 for c in chars if not c.fig and not c.c.isspace() and inside(c.cx, c.cy, f))

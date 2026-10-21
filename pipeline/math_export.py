@@ -48,6 +48,7 @@ def answer_list(a):
     out = []
     for s in srcs:
         if not s or '<' in s: continue
+        s = re.sub(r'(?<=\d),(?=\d{3}(?!\d))', '', s)        # 3,540 is one number, not "3" and "540"
         for t in re.split(r',|\bor\b|\band\b|\beither\b', s):
             t = t.strip().rstrip('.').replace('−', '-').replace(' ', '')
             if t and NUM.match(t) and t not in out: out.append(t)
