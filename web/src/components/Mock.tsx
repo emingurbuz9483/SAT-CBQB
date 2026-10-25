@@ -3,7 +3,7 @@ import type { CatalogEntry, Letter, Question, Subject } from '../types'
 import { SUBJECTS, loadCatalog, loadSkill, preloadMath, skillSlug, subjectPath } from '../data'
 import { logCheck, recordResult, type Progress } from '../progress'
 import { navigate } from '../router'
-import { MOCK, MODULE_DIFFICULTIES, buildMock, loadMock, mockSkills, saveMock, timeLabel, type MockState, type ModuleNo } from '../mock'
+import { MOCK, MODULE_DIFFICULTIES, buildMock, clearMock, loadMock, mockSkills, saveMock, timeLabel, type MockState, type ModuleNo } from '../mock'
 import { correctLabel, isCorrect, isSpr } from '../answer'
 import { QuestionView } from './QuestionView'
 import { MathTools } from './MathTools'
@@ -29,6 +29,7 @@ export function Mock({ subject, module, fresh, progress }: { subject: Subject; m
   const [view, setView] = useState<View>({ kind: 'test' })
   const [navOpen, setNavOpen] = useState(false)
   const [hideTimer, setHideTimer] = useState(false)
+  const [confirmQuit, setConfirmQuit] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const catalog = useRef<CatalogEntry[]>([])
   const submitted = useRef(false)
@@ -99,6 +100,14 @@ export function Mock({ subject, module, fresh, progress }: { subject: Subject; m
     setNavOpen(false)
     window.scrollTo(0, 0)
   }, [test, qs])
+
+  // quit: drop the module unscored, so none of its answers count
+  const quit = () => {
+    submitted.current = true
+    clearMock(subject)
+    setTest(null)
+    navigate(home)
+  }
 
   // time's up: submit what's there, as on test day
   useEffect(() => {
@@ -298,6 +307,21 @@ export function Mock({ subject, module, fresh, progress }: { subject: Subject; m
     </div>
   )
   const grid = <QuestionGrid test={test} current={view.kind === 'test' ? test.idx : -1} onPick={goTo} />
+  const quitButton = confirmQuit ? (
+    <span className="drill-quit">
+      Quit? This module won’t be scored or counted.{' '}
+      <button className="btn secondary small" onClick={quit}>
+        Yes, quit
+      </button>{' '}
+      <button className="btn text small" onClick={() => setConfirmQuit(false)}>
+        Keep going
+      </button>
+    </span>
+  ) : (
+    <button className="btn secondary small" onClick={() => setConfirmQuit(true)}>
+      Quit
+    </button>
+  )
 
   if (view.kind === 'check')
     return (
@@ -313,7 +337,7 @@ export function Mock({ subject, module, fresh, progress }: { subject: Subject; m
         </main>
         <footer className="bottom-bar">
           <div className="bottom-inner">
-            <span />
+            {quitButton}
             <div className="actions">
               <button className="btn secondary" onClick={() => goTo(n - 1)}>
                 Back
@@ -403,9 +427,14 @@ export function Mock({ subject, module, fresh, progress }: { subject: Subject; m
 
       <footer className="bottom-bar">
         <div className="bottom-inner">
-          <button className="btn secondary mock-nav-toggle" aria-expanded={navOpen} onClick={() => setNavOpen((o) => !o)}>
-            Question {test.idx + 1} of {n} <ChevronIcon up={!navOpen} />
-          </button>
+          <span className="mock-foot-left">
+            {quitButton}
+            {!confirmQuit && (
+              <button className="btn secondary mock-nav-toggle" aria-expanded={navOpen} onClick={() => setNavOpen((o) => !o)}>
+                Question {test.idx + 1} of {n} <ChevronIcon up={!navOpen} />
+              </button>
+            )}
+          </span>
           <div className="actions">
             <button className="btn secondary" disabled={test.idx === 0} onClick={() => goTo(test.idx - 1)}>
               Back

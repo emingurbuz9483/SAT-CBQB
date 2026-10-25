@@ -128,12 +128,29 @@ export interface MockState {
 
 const key = (subject: Subject) => (subject === 'math' ? 'cbqb-mock-math-v1' : 'cbqb-mock-v1')
 
+/** Every module started before this and not yet submitted was stopped: it's dropped unscored, as if quit. */
+const STOPPED_BEFORE = Date.parse('2026-10-25T13:50:00Z')
+
 export function loadMock(subject: Subject): MockState | null {
   try {
     const s = JSON.parse(localStorage.getItem(key(subject)) ?? 'null') as MockState | null
-    return s && Array.isArray(s.ids) ? s : null
+    if (!s || !Array.isArray(s.ids)) return null
+    if (!s.submittedAt && s.deadline - MOCK[subject].minutes * 60_000 < STOPPED_BEFORE) {
+      clearMock(subject)
+      return null
+    }
+    return s
   } catch {
     return null
+  }
+}
+
+/** Forget the saved module, e.g. when the student quits it. */
+export function clearMock(subject: Subject) {
+  try {
+    localStorage.removeItem(key(subject))
+  } catch {
+    // ignore
   }
 }
 

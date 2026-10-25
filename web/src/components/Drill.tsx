@@ -16,10 +16,36 @@ const fmtSeconds = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}m ${Math.roun
 
 type View = { kind: 'drill' } | { kind: 'results' } | { kind: 'review'; i: number }
 
+/** Move past the question on screen, keeping its answer if it was answered. */
+const advance = (s: DrillState, response: string | null): DrillState =>
+  response ? { ...s, idx: s.idx + 1, answers: { ...s.answers, [s.ids[s.idx]]: response } } : { ...s, idx: s.idx + 1 }
+
+/** Save a drill that ran its course: each answer to progress and the attempt log, and the drill to Analytics. */
+function countDrill(subject: Subject, s: DrillState, qs: Map<string, Question>) {
+  const totals = drillTotals(s, (id) => !!qs.get(id) && isCorrect(qs.get(id)!, s.answers[id]))
+  for (const id of totals.seen) {
+    const choice = s.answers[id]
+    const q = qs.get(id)
+    if (!choice || !q) continue
+    const correct = isCorrect(q, choice)
+    recordResult(id, correct)
+    logCheck({ id, domain: q.domain, skill: q.skill, difficulty: q.difficulty, choice, correct, attempt: 1, seconds: s.secs[id] ?? 0 })
+  }
+  addDrillRecord({
+    subject,
+    at: s.finishedAt ?? s.deadline,
+    minutes: s.minutes,
+    answered: totals.answered,
+    correct: totals.correct,
+    skipped: totals.skipped,
+    seconds: totals.seconds,
+  })
+}
+
 /**
- * Speed Drill: as many questions as the student can answer before the clock runs out. Each answer is graded and
- * saved when the student moves on; when time's up the drill closes by itself (an answer picked but not yet
- * submitted still counts).
+ * Speed Drill: as many questions as the student can answer before the clock runs out. Answers are graded and saved
+ * when the drill closes by itself at time's up (an answer picked but not yet submitted still counts); a drill the
+ * student quits isn't saved at all.
  */
 export function Drill({ subject, minutes, progress }: { subject: Subject; minutes: DrillMinutes | null; progress: Progress }) {
   const home = subjectPath(subject, '/')
@@ -48,11 +74,13 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
     Promise.all([loadCatalog(subject), Promise.all(skills.map((s) => loadSkill(subject, skillSlug(s))))])
       .then(([cat, lists]) => {
         if (!alive) return
+        const byId = new Map(lists.flat().map((q) => [q.id, q]))
+        // a drill left open until its time ran out still counts before a new one replaces it
+        if (minutes && saved && !saved.finishedAt && saved.deadline <= Date.now()) countDrill(subject, { ...saved, finishedAt: saved.deadline }, byId)
         const d: DrillState = minutes
           ? { minutes, ids: buildDrill(subject, cat, progress), idx: 0, answers: {}, secs: {}, deadline: Date.now() + minutes * 60_000 }
           : saved!
         finished.current = !!d.finishedAt
-        const byId = new Map(lists.flat().map((q) => [q.id, q]))
         preloadMath(d.ids.slice(d.idx, d.idx + 6).map((id) => byId.get(id)).filter((q): q is Question => !!q))
         setQs(byId)
         setDrill(d)
@@ -96,38 +124,15 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, qs])
 
-  /** Move past the question on screen, grading it and saving it to progress if it was answered. */
-  const grade = useCallback(
-    (s: DrillState, response: string | null): DrillState => {
-      const id = s.ids[s.idx]
-      const q = qs?.get(id)
-      if (!response || !q) return { ...s, idx: s.idx + 1 }
-      const correct = isCorrect(q, response)
-      recordResult(id, correct)
-      logCheck({ id, domain: q.domain, skill: q.skill, difficulty: q.difficulty, choice: response, correct, attempt: 1, seconds: s.secs[id] ?? 0 })
-      return { ...s, idx: s.idx + 1, answers: { ...s.answers, [id]: response } }
-    },
-    [qs],
-  )
-
+  /** End the drill and show the results; unless the student quit, save it. */
   const finish = useCallback(
-    (s: DrillState) => {
+    (s: DrillState, quit = false) => {
       if (finished.current || !qs) return
       finished.current = true
-      const done: DrillState = { ...s, finishedAt: Math.min(Date.now(), s.deadline) }
-      const totals = drillTotals(done, (id) => isCorrect(qs.get(id)!, done.answers[id]))
+      const done: DrillState = { ...s, finishedAt: Math.min(Date.now(), s.deadline), ...(quit && { quit: true }) }
       const earlier = loadDrillHistory().filter((r) => r.subject === subject && r.minutes === s.minutes)
       setBest(earlier.length ? Math.max(...earlier.map((r) => r.correct)) : null)
-      addDrillRecord({
-        subject,
-        at: done.finishedAt!,
-        minutes: s.minutes,
-        answered: totals.answered,
-        correct: totals.correct,
-        skipped: totals.skipped,
-        seconds: totals.seconds,
-        ...(done.finishedAt! < s.deadline && { quit: true }),
-      })
+      if (!quit) countDrill(subject, done, qs)
       setDrill(done)
       setView({ kind: 'results' })
       window.scrollTo(0, 0)
@@ -138,20 +143,20 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
   const next = useCallback(
     (response: string | null) => {
       if (!drill || drill.finishedAt) return
-      const s = grade(drill, response)
+      const s = advance(drill, response)
       setChoice(null)
       setCrossed([])
       window.scrollTo(0, 0)
       if (s.idx >= s.ids.length) finish(s)
       else setDrill(s)
     },
-    [drill, grade, finish],
+    [drill, finish],
   )
 
   // time's up: close the drill, counting an answer that was picked but not yet submitted
   useEffect(() => {
-    if (running && qs && !finished.current && now >= drill.deadline) finish(choice ? grade(drill, choice) : drill)
-  }, [running, qs, now, drill, choice, grade, finish])
+    if (running && qs && !finished.current && now >= drill.deadline) finish(choice ? advance(drill, choice) : drill)
+  }, [running, qs, now, drill, choice, finish])
 
   // keyboard: A–D / 1–4 choose, Enter submits
   useEffect(() => {
@@ -230,7 +235,7 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
 
   if (view.kind === 'results') {
     const { answered, correct, skipped, seconds, seen } = totals
-    const newBest = best !== null && correct > best
+    const newBest = !drill.quit && best !== null && correct > best
     // pace over the time actually used, so quitting early doesn't drag it down
     const usedMinutes = Math.max(1 / 60, ((drill.finishedAt ?? now) - (drill.deadline - drill.minutes * 60_000)) / 60_000)
     return (
@@ -243,6 +248,7 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
             {answered} answered · {correct} correct
           </h1>
           {newBest && <p className="drill-best">New best for a {drill.minutes}-minute drill (was {best} correct)</p>}
+          {drill.quit && <p className="muted mock-note">You quit this drill, so it isn’t counted in your progress or Analytics.</p>}
           <div className="meter" aria-hidden="true">
             <span style={{ width: `${answered ? (correct / answered) * 100 : 0}%` }} />
           </div>
@@ -357,8 +363,8 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
         <div className="bottom-inner">
           {confirmQuit ? (
             <span className="drill-quit">
-              End the drill now?{' '}
-              <button className="btn secondary small" onClick={() => finish(drill)}>
+              Quit? This drill won’t count.{' '}
+              <button className="btn secondary small" onClick={() => finish(drill, true)}>
                 Yes, quit
               </button>{' '}
               <button className="btn text small" onClick={() => setConfirmQuit(false)}>

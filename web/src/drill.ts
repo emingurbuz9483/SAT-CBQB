@@ -59,6 +59,7 @@ export interface DrillState {
   secs: Record<string, number> // time spent on each question
   deadline: number // epoch ms
   finishedAt?: number
+  quit?: boolean // ended early with Quit: nothing from it is saved
 }
 
 const key = (subject: Subject) => (subject === 'math' ? 'cbqb-drill-math-v1' : 'cbqb-drill-v1')
@@ -89,7 +90,7 @@ export interface DrillRecord {
   correct: number
   skipped: number
   seconds: number // time spent on the answered questions
-  quit?: boolean // ended before the clock ran out
+  quit?: boolean // older versions saved quit drills too; those are left out now
 }
 
 const HISTORY = 'cbqb-drill-history-v1'
@@ -97,7 +98,7 @@ const HISTORY = 'cbqb-drill-history-v1'
 export function loadDrillHistory(): DrillRecord[] {
   try {
     const h = JSON.parse(localStorage.getItem(HISTORY) ?? '[]')
-    return Array.isArray(h) ? h : []
+    return Array.isArray(h) ? h.filter((r: DrillRecord) => !r.quit) : []
   } catch {
     return []
   }

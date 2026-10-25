@@ -2097,3 +2097,9 @@ img.fig {
     width: 60px;
   }
 }
+.mock-foot-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
