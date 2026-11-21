@@ -19,9 +19,9 @@ ZOOM_FIG = 3        # render scale for figures
 
 # ---------------------------------------------------------------- page model
 class Ch:
-    __slots__ = ('c', 'x0', 'y0', 'x1', 'y1', 'oy', 'fig', 'vs', 'sz')
+    __slots__ = ('c', 'x0', 'y0', 'x1', 'y1', 'oy', 'fig', 'vs', 'sz', 'u')
     def __init__(s, c, bb, oy, fig=False, sz=1.0):
-        s.c = c; s.x0, s.y0, s.x1, s.y1 = bb; s.oy = oy; s.fig = fig; s.vs = ''; s.sz = sz
+        s.c = c; s.x0, s.y0, s.x1, s.y1 = bb; s.oy = oy; s.fig = fig; s.vs = ''; s.sz = sz; s.u = False
     @property
     def cx(s): return (s.x0 + s.x1) / 2
     @property
@@ -98,6 +98,15 @@ def load_page(doc, pno):
                 overlap(c.x0, c.x1, r.x0, r.x1) > 0.5 * r.width and c.y0 - .7 <= r.y0 and r.y1 <= c.y1 + .7
                 for c in buckets.get(int(((r.y0 + r.y1) / 2) // 10), ())):
             continue
+        # an underline ("How many pounds …") is a thin rule just below the baseline of the words above it:
+        # it marks those letters instead of becoming a math image that splits the word
+        if r.height <= 1.2 and r.width >= 3:
+            under = [c for c in buckets.get(int(((r.y0 + r.y1) / 2) // 10), ())
+                     if c.x0 >= r.x0 - 1 and c.x1 <= r.x1 + 1 and c.oy - 0.3 <= r.y0 <= c.oy + 2.5]
+            if (under and all(c.c.isalpha() for c in under) and sum(c.x1 - c.x0 for c in under) >= 0.7 * r.width
+                    and abs(min(c.x0 for c in under) - r.x0) < 1.5 and abs(max(c.x1 for c in under) - r.x1) < 1.5):
+                for c in under: c.u = True
+                continue
         draws.append({'r': (r.x0, r.y0, r.x1, r.y1), 'items': len(dr['items'])})
     imgs = [tuple(i['bbox']) for i in p.get_image_info() if i['bbox'][2] - i['bbox'][0] > 1]
     return chars, draws, imgs
@@ -272,9 +281,10 @@ def toks_html(toks, oy, rend, pno):
             out.append(f'<img class="m" src="{src}" alt="" style="width:{em(r[2] - r[0])};height:{em(r[3] - r[1])};vertical-align:{em(oy - r[3])}">')
         else:
             e = html.escape(t.c, quote=False)
-            out.append(f'<{t.vs}>{e}</{t.vs}>' if t.vs else e)
+            if t.vs: e = f'<{t.vs}>{e}</{t.vs}>'
+            out.append(f'<u>{e}</u>' if t.u else e)
         prev = t
-    h = re.sub(r'</(sup|sub)><\1>', '', ''.join(out))
+    h = re.sub(r'</(sup|sub|u)><\1>', '', ''.join(out))
     return re.sub(r' {2,}', ' ', h).strip()
 
 def first_word_width(r):

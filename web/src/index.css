@@ -1859,6 +1859,10 @@ sup {
   display: inline-block;
   background-repeat: no-repeat;
 }
+/* one equation (several images plus its brackets and punctuation) never wraps in the middle */
+.mw {
+  white-space: nowrap;
+}
 img.fig {
   display: block;
   max-width: 100%;

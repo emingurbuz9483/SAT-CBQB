@@ -32,6 +32,33 @@ FIXES = {
 LEAD = r'Choices? ([A-D](?:,? (?:and |or )?[A-D])*),? (?:is|are) '
 NUM = re.compile(r'^-?(\d+(\.\d*)?|\.\d+)(/\d+)?$')
 IMG = re.compile(r'<img class="m" src="([^"]+)" alt="" style="width:[^;]+;height:[^;]+;vertical-align:([^"]+)">')
+SPAN = r'<span class="m" style="width:[\d.]+em[^"]*"></span>'
+# a run of inline math (one expression is often cut into several images: "a/b", "=", "63/17") with the
+# brackets, minus sign and punctuation that touch it; it is kept on one line so an equation never wraps
+# in the middle and a line never starts with its comma
+MATH_RUN = re.compile(r'[(\[−]*' + SPAN + r'(?:\s?[=+−<>≤≥×·]?\s?' + SPAN + r')*[.,;:?!)\]%°]*')
+MAX_RUN_EM = 16          # longer runs may still wrap, or they would overflow a phone screen
+
+def tidy(h):
+    """Text fixes for the math HTML (the parts outside inline-math images)."""
+    def text(t, after_open):
+        t = t.replace('\x00', '·').replace('\ufe00', '')          # an unmapped glyph (x¹ · y²); a stray variation selector
+        t = t.replace(' – ', ' − ')                                 # the source writes minus as an en dash: "w – 10"
+        # …and a negative sign: "= –2", "(–1", "–ax", "x<sup>–2</sup>"; a range like 10–19 (also between two
+        # math images) or "non–dog" stays a dash. U+2212 is never split from the number after it at a line break.
+        t = re.sub(r'(^|[\s(\[=,;:/])–(?=[\d.(a-zA-Z])', lambda m: m.group(1) + ('−' if m.group(1) or after_open else '–'), t)
+        return t
+    parts = re.split(r'(<[^>]+>)', h)
+    h = ''.join(p if p.startswith('<') else text(p, k == 0 or not parts[k - 1].startswith('</'))
+                for k, p in enumerate(parts))
+    h = re.sub(r'(</span>) -(?=[a-z])', r'\1-', h)                 # "7 -inch" -> "7-inch"
+    h = re.sub(r'</u>( ?)<u>', r'\1', h)
+    def run(m):
+        g = m.group(0)
+        spans = re.findall(r'width:([\d.]+)em', g)
+        if (len(spans) < 2 and g.startswith('<') and g.endswith('</span>')) or sum(map(float, spans)) > MAX_RUN_EM: return g
+        return f'<span class="mw">{g}</span>'
+    return MATH_RUN.sub(run, h)
 
 def by_choice(pars):
     by = {}
@@ -117,7 +144,7 @@ def main():
         def fix(h):
             h = IMG.sub(sub, h)
             for m in re.finditer(r'src="(figures/[^"]+)"', h): figs_used.add(m.group(1))
-            return h.replace('src="figures/', 'src="data/math/figures/')
+            return tidy(h.replace('src="figures/', 'src="data/math/figures/'))
         q['stem'] = fix(q['stem'])
         for b in q['stimulus']:
             if 'html' in b: b['html'] = fix(b['html'])
