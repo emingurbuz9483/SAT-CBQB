@@ -30,6 +30,30 @@ export const ChevronIcon = ({ size = 16, up = false }: { size?: number; up?: boo
   </svg>
 )
 
+export const PauseIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...base} strokeWidth={3}>
+    <path d="M9 6v12M15 6v12" />
+  </svg>
+)
+
+export const PlayIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...base} fill="currentColor" strokeWidth={2}>
+    <path d="M8 5.5v13l10-6.5z" />
+  </svg>
+)
+
+export const NoteIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...base} strokeWidth={2}>
+    <path d="M5 4h14v11l-5 5H5zM14 20v-5h5M8.5 9h7M8.5 12.5h4" />
+  </svg>
+)
+
+export const TrashIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...base} strokeWidth={2}>
+    <path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10.5 11v5.5M13.5 11v5.5" />
+  </svg>
+)
+
 export const ChartIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...base} strokeWidth={2.2}>
     <path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />

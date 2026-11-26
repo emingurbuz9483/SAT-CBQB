@@ -3,6 +3,7 @@ import type { CatalogEntry, Letter, Question, Subject } from '../types'
 import { SUBJECTS, loadCatalog, loadSkill, preloadMath, skillSlug, subjectPath } from '../data'
 import { logCheck, recordResult, type Progress } from '../progress'
 import { navigate } from '../router'
+import { isTyping } from '../highlights'
 import { MOCK, MODULE_DIFFICULTIES, buildMock, clearMock, loadMock, mockSkills, saveMock, timeLabel, type MockState, type ModuleNo } from '../mock'
 import { correctLabel, isCorrect, isSpr } from '../answer'
 import { QuestionView } from './QuestionView'
@@ -126,7 +127,7 @@ export function Mock({ subject, module, fresh, progress }: { subject: Subject; m
   useEffect(() => {
     if (!running || view.kind !== 'test') return
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement) return
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e)) return
       if (qs && isSpr(qs.get(test?.ids[test.idx] ?? '') ?? ({} as Question))) return
       let i = LETTERS.indexOf(e.key.toUpperCase() as Letter)
       if (i < 0) i = ['1', '2', '3', '4'].indexOf(e.key)

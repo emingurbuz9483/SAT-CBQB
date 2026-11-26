@@ -1,6 +1,7 @@
 import type { Letter, Question } from '../types'
 import { Stimulus, Html } from './Stimulus'
 import { CheckIcon, CrossIcon } from './Icons'
+import { useHighlighter } from './Highlighter'
 import { GRID_CHARS, correctLabel, gridMax, isCorrect, isSpr } from '../answer'
 
 /** answering: choosing; done: checked (one chance per question) */
@@ -25,18 +26,19 @@ export function QuestionView(props: Props) {
 
 function MultipleChoice({ q, phase, selected, tried, crossed, onSelect, onToggleCross }: Props) {
   const locked = phase !== 'answering'
+  const hl = useHighlighter(q.id)
   // Reading and Writing: passage beside the question; Math: one column, as in Bluebook
   const split = q.stimulus.length > 0 && q.test !== 'Math'
   return (
     <article className={`question ${split ? 'split' : ''}`}>
       {split && (
         <section className="pane-passage" aria-label="Passage">
-          <Stimulus blocks={q.stimulus} />
+          <Stimulus blocks={q.stimulus} ref={hl.region('stim')} />
         </section>
       )}
       <section className="pane-question">
-        {!split && q.stimulus.length > 0 && <Stimulus blocks={q.stimulus} />}
-        <Html as="p" className="stem" html={q.stem} />
+        {!split && q.stimulus.length > 0 && <Stimulus blocks={q.stimulus} ref={hl.region('stim')} />}
+        <Html as="p" className="stem" html={q.stem} ref={hl.region('stem')} />
         <p className="choose">Choose 1 answer:</p>
         <ul className="choices" role="radiogroup" aria-label="Answer choices">
           {q.choices.map(({ letter, html }) => {
@@ -87,6 +89,7 @@ function MultipleChoice({ q, phase, selected, tried, crossed, onSelect, onToggle
         </ul>
         <Notes q={q} />
       </section>
+      {hl.toolbar}
     </article>
   )
 }
@@ -106,17 +109,18 @@ function GridIn({ q, phase, selected, onSelect, onSubmit }: Props) {
   const value = selected ?? ''
   const done = phase === 'done'
   const right = done && isCorrect(q, value)
+  const hl = useHighlighter(q.id)
   const split = q.stimulus.length > 0 && q.test !== 'Math'
   return (
     <article className={`question ${split ? 'split' : ''}`}>
       {split && (
         <section className="pane-passage" aria-label="Question details">
-          <Stimulus blocks={q.stimulus} />
+          <Stimulus blocks={q.stimulus} ref={hl.region('stim')} />
         </section>
       )}
       <section className="pane-question">
-        {!split && q.stimulus.length > 0 && <Stimulus blocks={q.stimulus} />}
-        <Html as="p" className="stem" html={q.stem} />
+        {!split && q.stimulus.length > 0 && <Stimulus blocks={q.stimulus} ref={hl.region('stim')} />}
+        <Html as="p" className="stem" html={q.stem} ref={hl.region('stem')} />
         <div className={`gridin ${done ? (right ? 'correct' : 'incorrect') : ''}`}>
           <label className="choose" htmlFor={`gi-${q.id}`}>
             Enter your answer:
@@ -162,6 +166,7 @@ function GridIn({ q, phase, selected, onSelect, onSubmit }: Props) {
         )}
         <Notes q={q} />
       </section>
+      {hl.toolbar}
     </article>
   )
 }

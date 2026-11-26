@@ -3,9 +3,17 @@ import { figureUrl } from '../data'
 
 // All html strings come from our own extraction of the CBQB PDFs: <em> <strong> <u> <sub> <sup> <br>, plus (Math)
 // <span class="m"> math cut from the PDF, <img class="fig"> graphs and <table class="mtable">, so rendering them directly is safe.
-export const Html = ({ html, as: Tag = 'span', className }: { html: string; as?: 'span' | 'p' | 'div' | 'li' | 'figcaption'; className?: string }) => (
-  <Tag className={className} dangerouslySetInnerHTML={{ __html: html }} />
-)
+export const Html = ({
+  html,
+  as: Tag = 'span',
+  className,
+  ref,
+}: {
+  html: string
+  as?: 'span' | 'p' | 'div' | 'li' | 'figcaption'
+  className?: string
+  ref?: (el: HTMLElement | null) => void
+}) => <Tag ref={ref} className={className} dangerouslySetInnerHTML={{ __html: html }} />
 
 function BlockView({ b }: { b: Block }) {
   switch (b.type) {
@@ -72,9 +80,9 @@ function BlockView({ b }: { b: Block }) {
   }
 }
 
-export function Stimulus({ blocks }: { blocks: Block[] }) {
+export function Stimulus({ blocks, ref }: { blocks: Block[]; ref?: (el: HTMLElement | null) => void }) {
   return (
-    <div className="stimulus">
+    <div className="stimulus" ref={ref}>
       {blocks.map((b, i) => (
         <BlockView key={i} b={b} />
       ))}

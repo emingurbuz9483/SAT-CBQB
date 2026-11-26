@@ -527,6 +527,44 @@ h3 {
 .timer {
   font-variant-numeric: tabular-nums;
 }
+.timer-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.timer-wrap.paused .timer {
+  color: var(--gold);
+  font-weight: 700;
+}
+.timer-btn {
+  width: 28px;
+  height: 28px;
+}
+.timer-wrap.paused .timer-btn {
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+.paused-panel {
+  max-width: 440px;
+  margin: 48px auto 0;
+  text-align: center;
+}
+.paused-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  color: var(--gold);
+  margin-bottom: 16px;
+}
+.paused-panel h2 {
+  font-size: 24px;
+}
+.paused-panel p {
+  margin: 8px 0 24px;
+}
 .practice-main {
   max-width: calc(var(--col) + 32px);
   margin: 0 auto;
@@ -2106,4 +2144,173 @@ img.fig {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* ---------- highlights and notes (Bluebook-style) ---------- */
+:root {
+  --hl-yellow: #ffe57a;
+  --hl-blue: #b8dcff;
+  --hl-pink: #ffc4de;
+}
+mark.hl {
+  color: inherit;
+  background: none;
+  border-radius: 2px;
+  cursor: pointer;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+mark.hl-yellow {
+  background: var(--hl-yellow);
+}
+mark.hl-blue {
+  background: var(--hl-blue);
+}
+mark.hl-pink {
+  background: var(--hl-pink);
+}
+mark.hl-solid,
+mark.hl-dashed,
+mark.hl-dotted {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--navy);
+}
+mark.hl-dashed {
+  text-decoration-style: dashed;
+}
+mark.hl-dotted {
+  text-decoration-style: dotted;
+}
+/* inline math is a picture on white: let the highlight color show through it, and underline it like text */
+mark.hl .m {
+  mix-blend-mode: multiply;
+}
+mark.hl-solid .m {
+  border-bottom: 2px solid var(--navy);
+}
+mark.hl-dashed .m {
+  border-bottom: 2px dashed var(--navy);
+}
+mark.hl-dotted .m {
+  border-bottom: 2px dotted var(--navy);
+}
+/* a highlight with a note gets a small marker at its end */
+mark.hl.has-note.hl-end::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--navy);
+  vertical-align: 0.6em;
+}
+
+.hl-toolbar {
+  position: fixed;
+  z-index: 70;
+  top: 0;
+  left: 0;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(33, 36, 44, 0.18);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.hl-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.hl-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 4px;
+  background: var(--line);
+}
+.hl-swatch {
+  width: 26px;
+  height: 26px;
+  margin: 3px;
+  border-radius: 50%;
+  border: 1px solid rgba(33, 36, 44, 0.2);
+  cursor: pointer;
+  padding: 0;
+}
+.hl-swatch-yellow {
+  background: var(--hl-yellow);
+}
+.hl-swatch-blue {
+  background: var(--hl-blue);
+}
+.hl-swatch-pink {
+  background: var(--hl-pink);
+}
+.hl-swatch.on,
+.hl-swatch:hover {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--navy);
+}
+.hl-tool {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+.hl-tool:hover {
+  background: var(--line-soft);
+}
+.hl-tool.on {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.hl-delete:hover {
+  background: var(--red-soft);
+  color: var(--red);
+}
+.hl-line-sample {
+  font-weight: 700;
+  font-size: 16px;
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.hl-line-dashed {
+  text-decoration-style: dashed;
+}
+.hl-line-dotted {
+  text-decoration-style: dotted;
+}
+.hl-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+  width: 100%;
+  min-width: 260px;
+}
+.hl-note textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.hl-note textarea:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: -1px;
+  border-color: transparent;
 }

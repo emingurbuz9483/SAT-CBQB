@@ -6,8 +6,9 @@ import { MathTools } from './MathTools'
 import { configToParams, inPool, shuffle, type Result, type SessionConfig } from '../session'
 import { logCheck, recordResult, type Progress } from '../progress'
 import { navigate } from '../router'
+import { isTyping } from '../highlights'
 import { QuestionView, type Phase } from './QuestionView'
-import { CheckIcon, CloseIcon, CrossIcon } from './Icons'
+import { CheckIcon, CloseIcon, CrossIcon, PauseIcon, PlayIcon } from './Icons'
 import { Summary } from './Summary'
 
 const LETTERS: Letter[] = ['A', 'B', 'C', 'D']
@@ -36,6 +37,8 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
   const [toast, setToast] = useState<'correct' | 'wrong' | null>(null)
   const [finished, setFinished] = useState(false)
   const [round, setRound] = useState(0)
+  // Paused: the clock stops and the question is hidden, so a break doesn't count as time spent solving it
+  const [paused, setPaused] = useState(false)
 
   const resetQuestion = () => {
     setSelected(null)
@@ -43,6 +46,7 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
     setCrossed([])
     setPhase('answering')
     setToast(null)
+    setPaused(false)
   }
 
   // Build the question set once per config / round; progress is only read at that moment.
@@ -76,12 +80,12 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
   }, [cfgKey])
 
   const q = qs?.[idx]
-  const timer = useTimer(`${round}-${idx}`, !!q && phase !== 'done' && !finished)
+  const timer = useTimer(`${cfgKey}-${idx}`, !!q && phase !== 'done' && !finished && !paused)
 
   const setResult = useCallback((r: Result) => setResults((rs) => rs.map((x, i) => (i === idx && x === null ? r : x))), [idx])
 
   const check = useCallback(() => {
-    if (!q || !selected || phase !== 'answering') return
+    if (!q || !selected || phase !== 'answering' || paused) return
     logCheck({
       id: q.id,
       domain: q.domain,
@@ -101,7 +105,7 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
     if (!correct && !isSpr(q)) setTried([selected])
     setPhase('done')
     setToast(correct ? 'correct' : 'wrong')
-  }, [q, selected, phase, results, idx, setResult, timer.sec])
+  }, [q, selected, phase, paused, results, idx, setResult, timer.sec])
 
   const next = useCallback(() => {
     if (!qs) return
@@ -117,11 +121,15 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
     next()
   }
 
-  // keyboard: A–D / 1–4 choose, Enter checks or continues
+  // keyboard: A–D / 1–4 choose, Enter checks or continues (or resumes when paused)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || finished || !q) return
-      if (e.target instanceof HTMLInputElement) return // typing a grid-in answer
+      if (paused) {
+        if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)) setPaused(false)
+        return
+      }
+      if (isTyping(e)) return // typing a grid-in answer or a note
       const k = e.key.toUpperCase()
       let i = isSpr(q) ? -1 : LETTERS.indexOf(k as Letter)
       if (i < 0 && !isSpr(q)) i = ['1', '2', '3', '4'].indexOf(k)
@@ -135,7 +143,7 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [q, phase, finished, check, next])
+  }, [q, phase, paused, finished, check, next])
 
   const title = (config.skills.length === 1 ? skillBySlug(subject, config.skills[0]) : null) ?? 'Mixed practice'
 
@@ -175,8 +183,21 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
           </div>
           <div className="practice-meta">
             <span className={`diff diff-${cur.difficulty.toLowerCase()}`}>{cur.difficulty}</span>
-            <span className="muted timer" title="Time on this question">
-              {timer.label}
+            <span className={`timer-wrap ${paused ? 'paused' : ''}`}>
+              <span className="muted timer" title="Time on this question">
+                {timer.label}
+              </span>
+              {phase === 'answering' && (
+                <button
+                  type="button"
+                  className="icon-btn timer-btn"
+                  aria-label={paused ? 'Resume timer' : 'Pause timer'}
+                  title={paused ? 'Resume timer' : 'Pause timer'}
+                  onClick={() => setPaused((p) => !p)}
+                >
+                  {paused ? <PlayIcon size={14} /> : <PauseIcon size={14} />}
+                </button>
+              )}
             </span>
             <span className="muted qid" title="College Board question ID">
               ID {cur.id}
@@ -189,24 +210,37 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
         </div>
       </div>
 
-      <main className={`practice-main ${cur.stimulus.length > 0 && cur.test !== 'Math' ? 'wide' : ''}`}>
-        <QuestionView
-          key={`${round}-${idx}`}
-          q={cur}
-          phase={phase}
-          selected={selected}
-          tried={tried}
-          crossed={crossed}
-          onSelect={(l) => {
-            setSelected(l || null)
-            setCrossed((c) => c.filter((x) => x !== l))
-          }}
-          onSubmit={check}
-          onToggleCross={(l) => {
-            setCrossed((c) => (c.includes(l) ? c.filter((x) => x !== l) : [...c, l]))
-            if (selected === l) setSelected(null)
-          }}
-        />
+      <main className={`practice-main ${cur.stimulus.length > 0 && cur.test !== 'Math' && !paused ? 'wide' : ''}`}>
+        {paused ? (
+          <div className="paused-panel" role="status">
+            <span className="paused-icon">
+              <PauseIcon size={28} />
+            </span>
+            <h2>Timer paused</h2>
+            <p className="muted">The question is hidden while you’re on a break, so this time doesn’t count toward your average.</p>
+            <button className="btn primary" onClick={() => setPaused(false)}>
+              Resume
+            </button>
+          </div>
+        ) : (
+          <QuestionView
+            key={`${round}-${idx}`}
+            q={cur}
+            phase={phase}
+            selected={selected}
+            tried={tried}
+            crossed={crossed}
+            onSelect={(l) => {
+              setSelected(l || null)
+              setCrossed((c) => c.filter((x) => x !== l))
+            }}
+            onSubmit={check}
+            onToggleCross={(l) => {
+              setCrossed((c) => (c.includes(l) ? c.filter((x) => x !== l) : [...c, l]))
+              if (selected === l) setSelected(null)
+            }}
+          />
+        )}
       </main>
 
       {toast && (
@@ -248,7 +282,12 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
             </ol>
           </div>
           <div className="actions">
-            {phase === 'answering' && (
+            {phase === 'answering' && paused && (
+              <button className="btn primary" onClick={() => setPaused(false)}>
+                Resume
+              </button>
+            )}
+            {phase === 'answering' && !paused && (
               <>
                 <button className="btn text" onClick={skip}>
                   Skip

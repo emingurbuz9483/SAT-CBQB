@@ -3,6 +3,7 @@ import type { Letter, Question, Subject } from '../types'
 import { SUBJECTS, loadCatalog, loadSkill, preloadMath, skillSlug, subjectPath } from '../data'
 import { logCheck, recordResult, type Progress } from '../progress'
 import { navigate } from '../router'
+import { isTyping } from '../highlights'
 import { timeLabel } from '../mock'
 import { addDrillRecord, buildDrill, drillTotals, loadDrill, loadDrillHistory, saveDrill, type DrillMinutes, type DrillState } from '../drill'
 import { correctLabel, isCorrect, isSpr } from '../answer'
@@ -162,7 +163,7 @@ export function Drill({ subject, minutes, progress }: { subject: Subject; minute
   useEffect(() => {
     if (!running || view.kind !== 'drill' || !qs) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement) return
+      if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e)) return
       if (e.key === 'Enter' && choice && !(e.target instanceof HTMLButtonElement)) {
         e.preventDefault()
         next(choice)
