@@ -1,13 +1,20 @@
 import { useSyncExternalStore } from 'react'
 import { supabase } from './supabase'
 
-/** Latest outcome per question: r = first-try result of the latest attempt, n = attempts, t = time. */
+/**
+ * Outcome per question: r = result of the latest attempt (drives the Mistakes list), f = result of the very first
+ * attempt (drives accuracy; missing on records saved before it existed), n = attempts, t = time.
+ */
 export interface Rec {
   r: 'c' | 'i'
+  f?: 'c' | 'i'
   n: number
   t: number
 }
 export type Progress = Record<string, Rec>
+
+/** Whether the student got the question right on their first try; fixing a mistake later doesn't change it. */
+export const firstTryRight = (rec: Rec | undefined) => (rec?.f ?? rec?.r) === 'c'
 
 /** One press of Check (progress/history.jsonl locally, public.attempts in the cloud) */
 export interface CheckEvent {
@@ -110,6 +117,7 @@ const toRow = (id: string, rec: Rec, userId: string) => ({
   user_id: userId,
   question_id: id,
   result: rec.r,
+  first_result: rec.f ?? rec.r,
   attempts: rec.n,
   updated_at: new Date(rec.t).toISOString(),
 })
@@ -123,11 +131,11 @@ async function pullCloud(userId: string) {
     for (let from = 0; ; from += 1000) {
       const { data, error } = await supabase
         .from('progress')
-        .select('question_id,result,attempts,updated_at')
+        .select('question_id,result,first_result,attempts,updated_at')
         .order('question_id')
         .range(from, from + 999)
       if (error) throw error
-      for (const row of data) remote[row.question_id] = { r: row.result, n: row.attempts, t: Date.parse(row.updated_at) }
+      for (const row of data) remote[row.question_id] = { r: row.result, f: row.first_result ?? undefined, n: row.attempts, t: Date.parse(row.updated_at) }
       if (data.length < 1000) break
     }
     const newer = mergeIn(remote) // guest progress made on this device joins the account
@@ -210,9 +218,11 @@ export async function signOut() {
 }
 
 // ---------------------------------------------------------------- writes
-export function recordResult(id: string, correct: boolean) {
+/** Save an answer; returns which attempt at this question it was (1 = first try). */
+export function recordResult(id: string, correct: boolean): number {
   const prev = state[id]
-  const rec: Rec = { r: correct ? 'c' : 'i', n: (prev?.n ?? 0) + 1, t: Date.now() }
+  const r = correct ? 'c' : 'i'
+  const rec: Rec = { r, f: prev ? (prev.f ?? prev.r) : r, n: (prev?.n ?? 0) + 1, t: Date.now() }
   state = { ...state, [id]: rec }
   writeLocal()
   emit()
@@ -223,6 +233,7 @@ export function recordResult(id: string, correct: boolean) {
       .upsert(toRow(id, rec, account.id), { onConflict: 'user_id,question_id' })
       .then(({ error }) => error && console.error('[cbqb] save failed', error))
   }
+  return rec.n
 }
 
 /** Every press of Check, kept as a permanent log. */

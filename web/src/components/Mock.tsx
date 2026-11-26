@@ -93,8 +93,8 @@ export function Mock({ subject, module, fresh, progress }: { subject: Subject; m
       const q = qs.get(id)
       if (!choice || !q) continue // unanswered questions stay "new"
       const correct = isCorrect(q, choice)
-      recordResult(id, correct)
-      logCheck({ id, domain: q.domain, skill: q.skill, difficulty: q.difficulty, choice, correct, attempt: 1, seconds: test.secs[id] ?? 0 })
+      const attempt = recordResult(id, correct)
+      logCheck({ id, domain: q.domain, skill: q.skill, difficulty: q.difficulty, choice, correct, attempt, seconds: test.secs[id] ?? 0 })
     }
     setTest({ ...test, submittedAt: Date.now() })
     setView({ kind: 'results' })

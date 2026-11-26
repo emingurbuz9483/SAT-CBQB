@@ -29,8 +29,8 @@ function countDrill(subject: Subject, s: DrillState, qs: Map<string, Question>) 
     const q = qs.get(id)
     if (!choice || !q) continue
     const correct = isCorrect(q, choice)
-    recordResult(id, correct)
-    logCheck({ id, domain: q.domain, skill: q.skill, difficulty: q.difficulty, choice, correct, attempt: 1, seconds: s.secs[id] ?? 0 })
+    const attempt = recordResult(id, correct)
+    logCheck({ id, domain: q.domain, skill: q.skill, difficulty: q.difficulty, choice, correct, attempt, seconds: s.secs[id] ?? 0 })
   }
   addDrillRecord({
     subject,

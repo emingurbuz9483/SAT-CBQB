@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CatalogEntry, Difficulty, Subject } from '../types'
 import { DIFFICULTIES, SUBJECTS, loadCatalog, skillSlug, subjectPath } from '../data'
-import { accountsEnabled, signInWithGoogle, useAccount, type Progress } from '../progress'
+import { accountsEnabled, firstTryRight, signInWithGoogle, useAccount, type Progress } from '../progress'
 import { supabase } from '../supabase'
 import { navigate } from '../router'
 import { configToParams, type Mode } from '../session'
@@ -45,15 +45,20 @@ const LEVEL_LABEL: Record<Level, string> = {
 async function loadAttempts(): Promise<Attempt[]> {
   if (!supabase) return []
   const out: Attempt[] = []
+  const seen = new Set<string>() // older rows logged every retry as attempt 1: keep only the earliest per question
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabase
       .from('attempts')
-      .select('skill,correct,seconds,created_at')
+      .select('question_id,skill,correct,seconds,created_at')
       .eq('attempt', 1)
       .order('created_at')
       .range(from, from + 999)
     if (error) throw error
-    for (const r of data) out.push({ skill: r.skill, correct: r.correct, seconds: r.seconds, at: Date.parse(r.created_at) })
+    for (const r of data) {
+      if (seen.has(r.question_id)) continue
+      seen.add(r.question_id)
+      out.push({ skill: r.skill, correct: r.correct, seconds: r.seconds, at: Date.parse(r.created_at) })
+    }
     if (data.length < 1000) break
   }
   return out
@@ -101,7 +106,7 @@ export function Analytics({ subject, progress }: { subject: Subject; progress: P
       for (const t of [all, get(byDomain, e.domain), get(bySkill, e.skill), get(bySkillDiff, `${e.skill}|${e.difficulty}`), get(byDiff, e.difficulty)]) {
         t.total++
         if (rec) t.done++
-        if (rec?.r === 'c') t.correct++
+        if (firstTryRight(rec)) t.correct++
       }
     }
     return { all, byDomain, bySkill, bySkillDiff, byDiff }
@@ -131,7 +136,7 @@ export function Analytics({ subject, progress }: { subject: Subject; progress: P
     const mine = attempts?.filter((a) => skillSet.has(a.skill))
     const events = mine?.length
       ? mine.map((a) => ({ at: a.at, correct: a.correct }))
-      : (catalog ?? []).flatMap((e) => (progress[e.id] ? [{ at: progress[e.id].t, correct: progress[e.id].r === 'c' }] : []))
+      : (catalog ?? []).flatMap((e) => (progress[e.id] ? [{ at: progress[e.id].t, correct: firstTryRight(progress[e.id]) }] : []))
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const days = Array.from({ length: DAYS }, (_, i) => {

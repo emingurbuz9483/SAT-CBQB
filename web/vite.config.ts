@@ -9,7 +9,7 @@ const DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'progress')
 const FILE = join(DIR, 'progress.json') // latest result per question (what the app reads back)
 const HISTORY = join(DIR, 'history.jsonl') // one line per Check, never rewritten
 
-type Rec = { r: 'c' | 'i'; n: number; t: number }
+type Rec = { r: 'c' | 'i'; f?: 'c' | 'i'; n: number; t: number }
 
 function readRecords(): Record<string, Rec> {
   try {

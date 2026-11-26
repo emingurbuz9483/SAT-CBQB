@@ -86,26 +86,27 @@ export function Practice({ subject, config, progress }: { subject: Subject; conf
 
   const check = useCallback(() => {
     if (!q || !selected || phase !== 'answering' || paused) return
+    // One chance per question: a wrong pick ends the question and counts as a mistake.
+    const correct = isCorrect(q, selected)
+    let attempt = progress[q.id]?.n ?? 1
+    if (results[idx] === null) {
+      attempt = recordResult(q.id, correct)
+      setResult(correct ? 'correct' : 'incorrect')
+    }
     logCheck({
       id: q.id,
       domain: q.domain,
       skill: q.skill,
       difficulty: q.difficulty,
       choice: selected,
-      correct: isCorrect(q, selected),
-      attempt: 1,
+      correct,
+      attempt,
       seconds: timer.sec,
     })
-    // One chance per question: a wrong pick ends the question and counts as a mistake.
-    const correct = isCorrect(q, selected)
-    if (results[idx] === null) {
-      recordResult(q.id, correct)
-      setResult(correct ? 'correct' : 'incorrect')
-    }
     if (!correct && !isSpr(q)) setTried([selected])
     setPhase('done')
     setToast(correct ? 'correct' : 'wrong')
-  }, [q, selected, phase, paused, results, idx, setResult, timer.sec])
+  }, [q, selected, phase, paused, results, idx, setResult, timer.sec, progress])
 
   const next = useCallback(() => {
     if (!qs) return

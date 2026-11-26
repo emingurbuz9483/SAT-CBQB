@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CatalogEntry, Difficulty, Subject } from '../types'
 import { DIFFICULTIES, SUBJECTS, loadCatalog, skillSlug, subjectPath } from '../data'
-import { accountsEnabled, resetProgress, useAccount, useStorageMode, type Progress } from '../progress'
+import { accountsEnabled, firstTryRight, resetProgress, useAccount, useStorageMode, type Progress } from '../progress'
 import { navigate } from '../router'
 import { configToParams, inPool, type Mode } from '../session'
 import { MOCK, MODULE_DIFFICULTIES, loadMock, timeLabel, type ModuleNo } from '../mock'
@@ -69,7 +69,7 @@ export function Home({ subject, progress }: { subject: Subject; progress: Progre
       if (!s) m.set(e.skill, (s = { total: { Easy: 0, Medium: 0, Hard: 0 }, pool: 0, done: 0, correct: 0 }))
       s.total[e.difficulty]++
       if (progress[e.id]) s.done++
-      if (progress[e.id]?.r === 'c') s.correct++
+      if (firstTryRight(progress[e.id])) s.correct++
       if (prefs.difficulties.includes(e.difficulty) && inPool(prefs.mode, e.id, progress)) s.pool++
     }
     return m
